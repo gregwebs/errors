@@ -324,7 +324,7 @@ func (e *errWalkTest) Error() string {
 	return strconv.Itoa(e.v)
 }
 
-func (e *errWalkTest) Cause() error {
+func (e *errWalkTest) Unwrap() error {
 	return e.cause
 }
 

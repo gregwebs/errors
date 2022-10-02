@@ -23,13 +23,10 @@ if err != nil {
 ```
 ## Retrieving the cause of an error
 
-Using `errors.Wrap` constructs a stack of errors, adding context to the preceding error. Depending on the nature of the error it may be necessary to reverse the operation of errors.Wrap to retrieve the original error for inspection. Any error value which implements this interface can be inspected by `errors.Cause`.
-```go
-type causer interface {
-        Cause() error
-}
+Using `errors.Wrap` constructs a stack of errors, adding context to the preceding error. Depending on the nature of the error it may be necessary to reverse the operation of errors.Wrap to retrieve the original error for inspection. Any error value which implements the method `Unwrap` can be inspected by standard errors package functions or by `errors.Cause`.
+
 ```
-`errors.Cause` will recursively retrieve the topmost error which does not implement `causer`, which is assumed to be the original cause. For example:
+`errors.Cause` will recursively retrieve the topmost error which does not implement `Unwrap`, which is assumed to be the original cause. For example:
 ```go
 switch err := errors.Cause(err).(type) {
 case *MyError:

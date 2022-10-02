@@ -33,13 +33,12 @@
 // to reverse the operation of errors.Annotate to retrieve the original error
 // for inspection. Any error value which implements this interface
 //
-//     type causer interface {
-//             Cause() error
+//     interface {
+//             Unwrap() error
 //     }
 //
-// can be inspected by errors.Cause. errors.Cause will recursively retrieve
-// the topmost error which does not implement causer, which is assumed to be
-// the original cause. For example:
+// can be inspected one level deeper by the errors.Unwrap function. errors.Cause will recursively unwrap
+// the error. For example:
 //
 //     switch err := errors.Cause(err).(type) {
 //     case *MyError:
@@ -47,10 +46,6 @@
 //     default:
 //             // unknown error
 //     }
-//
-// causer interface is not exported by this package, but is considered a part
-// of stable public API.
-// errors.Unwrap is also available: this will retrieve the next error in the chain.
 //
 // Formatted printing of errors
 //
@@ -194,13 +189,13 @@ type withStack struct {
 	*stack
 }
 
-func (w *withStack) Cause() error { return w.error }
+func (w *withStack) Unwrap() error { return w.error }
 
 func (w *withStack) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			fmt.Fprintf(s, "%+v", w.Cause())
+			fmt.Fprintf(s, "%+v", w.Unwrap())
 			w.stack.Format(s, verb)
 			return
 		}
@@ -274,14 +269,14 @@ type withMessage struct {
 }
 
 func (w *withMessage) Error() string  { return w.msg + ": " + w.cause.Error() }
-func (w *withMessage) Cause() error   { return w.cause }
+func (w *withMessage) Unwrap() error   { return w.cause }
 func (w *withMessage) HasStack() bool { return w.causeHasStack }
 
 func (w *withMessage) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			fmt.Fprintf(s, "%+v\n", w.Cause())
+			fmt.Fprintf(s, "%+v\n", w.Unwrap())
 			io.WriteString(s, w.msg)
 			return
 		}
@@ -292,16 +287,8 @@ func (w *withMessage) Format(s fmt.State, verb rune) {
 }
 
 // Cause returns the underlying cause of the error, if possible.
-// An error value has a cause if it implements the following
-// interface:
-//
-//     type causer interface {
-//            Cause() error
-//     }
-//
-// If the error does not implement Cause, the original error will
-// be returned. If the error is nil, nil will be returned without further
-// investigation.
+// Unwrap goes just one level deep, but Cause goes all the way to the bottom
+// If nil is given, it will return nil
 func Cause(err error) error {
 	cause := Unwrap(err)
 	if cause == nil {
@@ -310,16 +297,16 @@ func Cause(err error) error {
 	return Cause(cause)
 }
 
-// Unwrap uses causer to return the next error in the chain or nil.
-// This goes one-level deeper, whereas Cause goes as far as possible
+// Unwrap uses the Unwrap method to return the next error in the chain or nil.
+// This is the same as the standard errors.Unwrap
 func Unwrap(err error) error {
-	type causer interface {
-		Cause() error
+	u, ok := err.(interface {
+		Unwrap() error
+	})
+	if !ok {
+		return nil
 	}
-	if unErr, ok := err.(causer); ok {
-		return unErr.Cause()
-	}
-	return nil
+	return u.Unwrap()
 }
 
 // Find an error in the chain that matches a test function.
