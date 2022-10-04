@@ -99,8 +99,9 @@ func New(message string) error {
 // as a value that satisfies error.
 // Errorf also records the stack trace at the point it was called.
 func Errorf(format string, args ...interface{}) error {
-	return &fundamental{
-		msg:   fmt.Sprintf(format, args...),
+	// Use withStack to support %w wrapping
+	return &withStack{
+		error: fmt.Errorf(format, args...),
 		stack: callers(),
 	}
 }
