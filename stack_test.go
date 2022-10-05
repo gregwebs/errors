@@ -173,11 +173,11 @@ func TestStackTrace(t *testing.T) {
 				"\t/github.com/gregwebs/errors/stack_test.go:169", // this is the stack of New's caller
 		},
 	}, {
-		Cause(func() error {
+		func() error {
 			return func() error {
-				return Errorf("hello %s", fmt.Sprintf("world"))
+				return Errorf("hello %s", "world")
 			}()
-		}()), []string{
+		}(), []string{
 			`github.com/gregwebs/errors.(func·010|TestStackTrace.func2.1)` +
 				"\n\t/github.com/gregwebs/errors/stack_test.go:178", // this is the stack of Errorf
 			`github.com/gregwebs/errors.(func·011|TestStackTrace.func2)` +
@@ -187,16 +187,7 @@ func TestStackTrace(t *testing.T) {
 		},
 	}}
 	for i, tt := range tests {
-		ste, ok := tt.err.(interface {
-			StackTrace() StackTrace
-		})
-		if !ok {
-			ste = tt.err.(interface {
-				Unwrap() error
-			}).Unwrap().(interface {
-				StackTrace() StackTrace
-			})
-		}
+		ste := GetStackTracer(tt.err)
 		st := ste.StackTrace()
 		for j, want := range tt.want {
 			testFormatRegexp(t, i, st[j], "%+v", want)

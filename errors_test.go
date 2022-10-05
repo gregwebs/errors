@@ -146,6 +146,7 @@ func TestErrorf(t *testing.T) {
 	}{
 		{Errorf("read error without format specifiers"), "read error without format specifiers"},
 		{Errorf("read error with %d format specifier", 1), "read error with 1 format specifier"},
+		{Errorf("wrapped error %w", errors.New("wrapped")), "wrapped error wrapped"},
 	}
 
 	for _, tt := range tests {
