@@ -6,6 +6,23 @@ type ErrorGroup interface {
 	Errors() []error
 }
 
+// If the error is an ErrorGroup, return its list of errors
+// If it is not an error group, the list will contain just itself.
+// If nil return nil
+func Errors(err error) []error {
+	if err == nil {
+		return nil
+	}
+	if group, ok := err.(ErrorGroup); ok {
+		errors := group.Errors()
+		result := make([]error, len(errors))
+		copy(result, errors)
+		return result
+	} else {
+		return []error{err}
+	}
+}
+
 // WalkDeep does a depth-first traversal of all errors.
 // Any ErrorGroup is traversed (after going deep).
 // The visitor function can return true to end the traversal early
