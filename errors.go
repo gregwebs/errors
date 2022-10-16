@@ -211,8 +211,6 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 // Wrap returns an error annotating err with a stack trace
 // at the point Annotate is called, and the supplied message.
 // If err is nil, Annotate returns nil.
-//
-// Deprecated: use Annotate instead
 func Wrap(err error, message string) error {
 	if err == nil {
 		return nil
@@ -232,8 +230,6 @@ func Wrap(err error, message string) error {
 // Wrapf returns an error annotating err with a stack trace
 // at the point Annotatef is call, and the format specifier.
 // If err is nil, Annotatef returns nil.
-//
-// Deprecated: use Annotatef instead
 func Wrapf(err error, format string, args ...interface{}) error {
 	if err == nil {
 		return nil
