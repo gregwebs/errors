@@ -82,6 +82,7 @@
 package errors
 
 import (
+	stderrors "errors"
 	"fmt"
 	"io"
 )
@@ -145,28 +146,17 @@ func (f *fundamental) Format(s fmt.State, verb rune) {
 	}
 }
 
-// WithStack annotates err with a stack trace at the point WithStack was called.
-// If err is nil, WithStack returns nil.
-//
-// Deprecated: use AddStack
-func WithStack(err error) error {
+// AddStack annotates err with a stack trace at the point WithStack was called.
+// It will first check with HasStack to see if a stack trace already exists before creating another one.
+func AddStack(err error) error {
 	if err == nil {
 		return nil
 	}
-
-	return &withStack{
-		err,
-		callers(),
-	}
-}
-
-// AddStack is similar to WithStack.
-// However, it will first check with HasStack to see if a stack trace already exists in the causer chain before creating another one.
-func AddStack(err error) error {
 	if HasStack(err) {
 		return err
 	}
-	return WithStack(err)
+
+	return &withStack{err, callers()}
 }
 
 // GetStackTracer will return the first StackTracer in the causer chain.
@@ -234,20 +224,20 @@ func Wrapf(err error, format string, args ...interface{}) error {
 	if err == nil {
 		return nil
 	}
+
 	hasStack := HasStack(err)
 	err = &withMessage{
 		cause:         err,
 		msg:           fmt.Sprintf(format, args...),
 		causeHasStack: hasStack,
 	}
-	return &withStack{
-		err,
-		callers(),
-	}
+
+	return &withStack{err, callers()}
 }
 
 // WithMessage annotates err with a new message.
 // If err is nil, WithMessage returns nil.
+// WithMessage does not add a new stack trace.
 func WithMessage(err error, message string) error {
 	if err == nil {
 		return nil
@@ -318,4 +308,14 @@ func Find(origErr error, test func(error) bool) error {
 		return false
 	})
 	return foundErr
+}
+
+// A re-export of the standard library errors.Is
+func Is(err, target error) bool {
+	return stderrors.Is(err, target)
+}
+
+// A re-export of the standard library errors.As
+func As(err error, target any) bool {
+	return stderrors.As(err, target)
 }

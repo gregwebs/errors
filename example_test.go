@@ -43,22 +43,22 @@ func ExampleWithMessage() {
 	// Output: oh noes: whoops
 }
 
-func ExampleWithStack() {
+func ExampleAddStack() {
 	cause := errors.New("whoops")
-	err := errors.WithStack(cause)
+	err := errors.AddStack(cause)
 	fmt.Println(err)
 
 	// Output: whoops
 }
 
-func ExampleWithStack_printf() {
+func ExampleAddStack_printf() {
 	cause := errors.New("whoops")
-	err := errors.WithStack(cause)
+	err := errors.AddStack(cause)
 	fmt.Printf("%+v", err)
 
 	// Example Output:
 	// whoops
-	// github.com/gregwebs/errors_test.ExampleWithStack_printf
+	// github.com/gregwebs/errors_test.ExampleAddStack_printf
 	//         /home/fabstu/go/src/github.com/gregwebs/errors/example_test.go:55
 	// testing.runExample
 	//         /usr/lib/go/src/testing/example.go:114
@@ -72,7 +72,7 @@ func ExampleWithStack_printf() {
 	//         /usr/lib/go/src/runtime/proc.go:183
 	// runtime.goexit
 	//         /usr/lib/go/src/runtime/asm_amd64.s:2086
-	// github.com/gregwebs/errors_test.ExampleWithStack_printf
+	// github.com/gregwebs/errors_test.ExampleAddStack_printf
 	//         /home/fabstu/go/src/github.com/gregwebs/errors/example_test.go:56
 	// testing.runExample
 	//         /usr/lib/go/src/testing/example.go:114

@@ -71,43 +71,43 @@ func TestFormatWrap(t *testing.T) {
 		format string
 		want   string
 	}{{
-		Annotate(New("error"), "error2"),
+		Wrap(New("error"), "error2"),
 		"%s",
 		"error2: error",
 	}, {
-		Annotate(New("error"), "error2"),
+		Wrap(New("error"), "error2"),
 		"%v",
 		"error2: error",
 	}, {
-		Annotate(New("error"), "error2"),
+		Wrap(New("error"), "error2"),
 		"%+v",
 		"error\n" +
 			"github.com/gregwebs/errors.TestFormatWrap\n" +
 			"\tgithub.com/gregwebs/errors/format_test.go:82",
 	}, {
-		Annotate(io.EOF, "error"),
+		Wrap(io.EOF, "error"),
 		"%s",
 		"error: EOF",
 	}, {
-		Annotate(io.EOF, "error"),
+		Wrap(io.EOF, "error"),
 		"%v",
 		"error: EOF",
 	}, {
-		Annotate(io.EOF, "error"),
+		Wrap(io.EOF, "error"),
 		"%+v",
 		"EOF\n" +
 			"error\n" +
 			"github.com/gregwebs/errors.TestFormatWrap\n" +
 			"\tgithub.com/gregwebs/errors/format_test.go:96",
 	}, {
-		Annotate(Annotate(io.EOF, "error1"), "error2"),
+		Wrap(Wrap(io.EOF, "error1"), "error2"),
 		"%+v",
 		"EOF\n" +
 			"error1\n" +
 			"github.com/gregwebs/errors.TestFormatWrap\n" +
 			"\tgithub.com/gregwebs/errors/format_test.go:103\n",
 	}, {
-		Annotate(New("error with space"), "context"),
+		Wrap(New("error with space"), "context"),
 		"%q",
 		`context: error with space`,
 	}}
@@ -123,30 +123,30 @@ func TestFormatWrapf(t *testing.T) {
 		format string
 		want   string
 	}{{
-		Annotatef(io.EOF, "error%d", 2),
+		Wrapf(io.EOF, "error%d", 2),
 		"%s",
 		"error2: EOF",
 	}, {
-		Annotatef(io.EOF, "error%d", 2),
+		Wrapf(io.EOF, "error%d", 2),
 		"%v",
 		"error2: EOF",
 	}, {
-		Annotatef(io.EOF, "error%d", 2),
+		Wrapf(io.EOF, "error%d", 2),
 		"%+v",
 		"EOF\n" +
 			"error2\n" +
 			"github.com/gregwebs/errors.TestFormatWrapf\n" +
 			"\tgithub.com/gregwebs/errors/format_test.go:134",
 	}, {
-		Annotatef(New("error"), "error%d", 2),
+		Wrapf(New("error"), "error%d", 2),
 		"%s",
 		"error2: error",
 	}, {
-		Annotatef(New("error"), "error%d", 2),
+		Wrapf(New("error"), "error%d", 2),
 		"%v",
 		"error2: error",
 	}, {
-		Annotatef(New("error"), "error%d", 2),
+		Wrapf(New("error"), "error%d", 2),
 		"%+v",
 		"error\n" +
 			"github.com/gregwebs/errors.TestFormatWrapf\n" +
@@ -158,69 +158,69 @@ func TestFormatWrapf(t *testing.T) {
 	}
 }
 
-func TestFormatWithStack(t *testing.T) {
+func TestFormatAddStack(t *testing.T) {
 	tests := []struct {
 		error
 		format string
 		want   []string
 	}{{
-		WithStack(io.EOF),
+		AddStack(io.EOF),
 		"%s",
 		[]string{"EOF"},
 	}, {
-		WithStack(io.EOF),
+		AddStack(io.EOF),
 		"%v",
 		[]string{"EOF"},
 	}, {
-		WithStack(io.EOF),
+		AddStack(io.EOF),
 		"%+v",
 		[]string{"EOF",
-			"github.com/gregwebs/errors.TestFormatWithStack\n" +
+			"github.com/gregwebs/errors.TestFormatAddStack\n" +
 				"\tgithub.com/gregwebs/errors/format_test.go:175"},
 	}, {
-		WithStack(New("error")),
+		AddStack(New("error")),
 		"%s",
 		[]string{"error"},
 	}, {
-		WithStack(New("error")),
+		AddStack(New("error")),
 		"%v",
 		[]string{"error"},
 	}, {
-		WithStack(New("error")),
+		AddStack(New("error")),
 		"%+v",
 		[]string{"error",
-			"github.com/gregwebs/errors.TestFormatWithStack\n" +
-				"\tgithub.com/gregwebs/errors/format_test.go:189",
-			"github.com/gregwebs/errors.TestFormatWithStack\n" +
+			"github.com/gregwebs/errors.TestFormatAddStack\n" +
 				"\tgithub.com/gregwebs/errors/format_test.go:189"},
-	}, {
-		WithStack(WithStack(io.EOF)),
-		"%+v",
-		[]string{"EOF",
-			"github.com/gregwebs/errors.TestFormatWithStack\n" +
-				"\tgithub.com/gregwebs/errors/format_test.go:197",
-			"github.com/gregwebs/errors.TestFormatWithStack\n" +
-				"\tgithub.com/gregwebs/errors/format_test.go:197"},
-	}, {
-		WithStack(WithStack(Annotatef(io.EOF, "message"))),
-		"%+v",
-		[]string{"EOF",
-			"message",
-			"github.com/gregwebs/errors.TestFormatWithStack\n" +
-				"\tgithub.com/gregwebs/errors/format_test.go:205",
-			"github.com/gregwebs/errors.TestFormatWithStack\n" +
-				"\tgithub.com/gregwebs/errors/format_test.go:205",
-			"github.com/gregwebs/errors.TestFormatWithStack\n" +
-				"\tgithub.com/gregwebs/errors/format_test.go:205"},
-	}, {
-		WithStack(Errorf("error%d", 1)),
-		"%+v",
-		[]string{"error1",
-			"github.com/gregwebs/errors.TestFormatWithStack\n" +
-				"\tgithub.com/gregwebs/errors/format_test.go:216",
-			"github.com/gregwebs/errors.TestFormatWithStack\n" +
-				"\tgithub.com/gregwebs/errors/format_test.go:216"},
-	}}
+	},
+
+		{
+			AddStack(AddStack(io.EOF)),
+			"%+v",
+			[]string{"EOF",
+				"github.com/gregwebs/errors.TestFormatAddStack\n" +
+					"\tgithub.com/gregwebs/errors/format_test.go:197"},
+		},
+
+		{
+			// comment is here to maintain the previous line number
+			AddStack(AddStack(Wrapf(io.EOF, "message"))),
+			"%+v",
+			[]string{"EOF",
+				"message",
+				"github.com/gregwebs/errors.TestFormatAddStack\n" +
+					"\tgithub.com/gregwebs/errors/format_test.go:205"},
+		},
+
+		{
+			// comment is here to maintain the previous line number
+			AddStack(Errorf("error%d", 1)),
+			"%+v",
+			[]string{"error1",
+				"github.com/gregwebs/errors.TestFormatAddStack\n" +
+					"\tgithub.com/gregwebs/errors/format_test.go:216",
+				"github.com/gregwebs/errors.TestFormatAddStack\n" +
+					"\tgithub.com/gregwebs/errors/format_test.go:216"},
+		}}
 
 	for i, tt := range tests {
 		testFormatCompleteCompare(t, i, tt.error, tt.format, tt.want, true)
@@ -269,7 +269,7 @@ func TestFormatWithMessage(t *testing.T) {
 		"%+v",
 		[]string{"EOF", "addition1", "addition2"},
 	}, {
-		Annotate(WithMessage(io.EOF, "error1"), "error2"),
+		Wrap(WithMessage(io.EOF, "error1"), "error2"),
 		"%+v",
 		[]string{"EOF", "error1", "error2",
 			"github.com/gregwebs/errors.TestFormatWithMessage\n" +
@@ -282,7 +282,7 @@ func TestFormatWithMessage(t *testing.T) {
 				"\tgithub.com/gregwebs/errors/format_test.go:278",
 			"error2"},
 	}, {
-		WithMessage(WithStack(io.EOF), "error"),
+		WithMessage(AddStack(io.EOF), "error"),
 		"%+v",
 		[]string{
 			"EOF",
@@ -290,7 +290,7 @@ func TestFormatWithMessage(t *testing.T) {
 				"\tgithub.com/gregwebs/errors/format_test.go:285",
 			"error"},
 	}, {
-		WithMessage(Annotate(WithStack(io.EOF), "inside-error"), "outside-error"),
+		WithMessage(Wrap(AddStack(io.EOF), "inside-error"), "outside-error"),
 		"%+v",
 		[]string{
 			"EOF",
@@ -328,20 +328,20 @@ func TestFormatWithMessage(t *testing.T) {
 			func(err error) error { return WithMessage(err, "with-message") },
 			[]string{"with-message"},
 		}, {
-			func(err error) error { return WithStack(err) },
+			func(err error) error { return AddStack(err) },
 			[]string{
 				"github.com/gregwebs/errors.(func·002|TestFormatGeneric.func2)\n\t" +
 					"github.com/gregwebs/errors/format_test.go:331",
 			},
 		}, {
-			func(err error) error { return Annotate(err, "wrap-error") },
+			func(err error) error { return Wrap(err, "wrap-error") },
 			[]string{
 				"wrap-error",
 				"github.com/gregwebs/errors.(func·003|TestFormatGeneric.func3)\n\t" +
 					"github.com/gregwebs/errors/format_test.go:337",
 			},
 		}, {
-			func(err error) error { return Annotatef(err, "wrapf-error%d", 1) },
+			func(err error) error { return Wrapf(err, "wrapf-error%d", 1) },
 			[]string{
 				"wrapf-error1",
 				"github.com/gregwebs/errors.(func·004|TestFormatGeneric.func4)\n\t" +
@@ -358,24 +358,27 @@ func TestFormatWithMessage(t *testing.T) {
 	}
 }*/
 
-func testFormatRegexp(t *testing.T, n int, arg interface{}, format, want string) {
+func testFormatRegexp(t *testing.T, n int, arg interface{}, format, wantAll string) {
 	t.Helper()
 	got := fmt.Sprintf(format, arg)
 	gotLines := strings.SplitN(got, "\n", -1)
-	wantLines := strings.SplitN(want, "\n", -1)
+	wantLines := strings.SplitN(wantAll, "\n", -1)
 
 	if len(wantLines) > len(gotLines) {
-		t.Errorf("test %d: wantLines(%d) > gotLines(%d):\n got: %q\nwant: %q", n+1, len(wantLines), len(gotLines), got, want)
+		t.Errorf("test %d: wantLines(%d) > gotLines(%d):\n got: %q\nwant: %q", n+1, len(wantLines), len(gotLines), got, wantLines)
 		return
 	}
 
-	for i, w := range wantLines {
-		match, err := regexp.MatchString(w, gotLines[i])
+	for i, wantLine := range wantLines {
+		want := wantLine
+		got := gotLines[i]
+		adjustedGot := regexp.MustCompile(`\S.*/errors`).ReplaceAllString(got, `github.com/gregwebs/errors`)
+		match, err := regexp.MatchString(want, adjustedGot)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !match {
-			t.Errorf("test %d: line %d: fmt.Sprintf(%q, err):\n got: %q\nwant: %q", n+1, i+1, format, got, want)
+			t.Errorf("test %d: line %d: fmt.Sprintf(%q, err):\n got: %q\nwant: %q", n+1, i+1, format, adjustedGot, want)
 		}
 	}
 }
@@ -386,7 +389,7 @@ var stackLineR = regexp.MustCompile(`\.`)
 //   - incase entry contains a newline, its a stacktrace
 //   - incase entry contains no newline, its a solo line.
 //
-// Detecting stack boundaries only works incase the WithStack-calls are
+// Detecting stack boundaries only works incase the AddStack-calls are
 // to be found on the same line, thats why it is optionally here.
 //
 // Example use:
@@ -416,7 +419,7 @@ func parseBlocks(input string, detectStackboundaries bool) ([]string, error) {
 		case isStackLine:
 			if wasStack {
 				// Detecting two stacks after another, possible cause lines match in
-				// our tests due to WithStack(WithStack(io.EOF)) on same line.
+				// our tests due to AddStack(AddStack(io.EOF)) on same line.
 				if detectStackboundaries {
 					if lines[l] {
 						if len(stack) == 0 {
@@ -452,6 +455,7 @@ func parseBlocks(input string, detectStackboundaries bool) ([]string, error) {
 }
 
 func testFormatCompleteCompare(t *testing.T, n int, arg interface{}, format string, want []string, detectStackBoundaries bool) {
+	t.Helper()
 	gotStr := fmt.Sprintf(format, arg)
 
 	got, err := parseBlocks(gotStr, detectStackBoundaries)
@@ -460,20 +464,21 @@ func testFormatCompleteCompare(t *testing.T, n int, arg interface{}, format stri
 	}
 
 	if len(got) != len(want) {
-		t.Fatalf("test %d: fmt.Sprintf(%s, err) -> wrong number of blocks: got(%d) want(%d)\n got: %s\nwant: %s\ngotStr: %q",
+		t.Errorf("test %d: fmt.Sprintf(%s, err) -> wrong number of blocks: got(%d) want(%d)\n got: %s\nwant: %s\ngotStr: %q",
 			n+1, format, len(got), len(want), prettyBlocks(got), prettyBlocks(want), gotStr)
 	}
 
 	for i := range got {
 		if strings.ContainsAny(want[i], "\n") {
+			adjustedGot := regexp.MustCompile(`\S*/errors`).ReplaceAllString(got[i], `github.com/gregwebs/errors`)
 			// Match as stack
-			match, err := regexp.MatchString(want[i], got[i])
+			match, err := regexp.MatchString(want[i], adjustedGot)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if !match {
 				t.Fatalf("test %d: block %d: fmt.Sprintf(%q, err):\ngot:\n%q\nwant:\n%q\nall-got:\n%s\nall-want:\n%s\n",
-					n+1, i+1, format, got[i], want[i], prettyBlocks(got), prettyBlocks(want))
+					n+1, i+1, format, adjustedGot, want[i], prettyBlocks(got), prettyBlocks(want))
 			}
 		} else {
 			// Match as message

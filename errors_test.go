@@ -29,7 +29,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestWrapNil(t *testing.T) {
-	got := Annotate(nil, "no error")
+	got := Wrap(nil, "no error")
 	if got != nil {
 		t.Errorf("Wrap(nil, \"no error\"): got %#v, expected nil", got)
 	}
@@ -42,11 +42,11 @@ func TestWrap(t *testing.T) {
 		want    string
 	}{
 		{io.EOF, "read error", "read error: EOF"},
-		{Annotate(io.EOF, "read error"), "client error", "client error: read error: EOF"},
+		{Wrap(io.EOF, "read error"), "client error", "client error: read error: EOF"},
 	}
 
 	for _, tt := range tests {
-		got := Annotate(tt.err, tt.message).Error()
+		got := Wrap(tt.err, tt.message).Error()
 		if got != tt.want {
 			t.Errorf("Wrap(%v, %q): got: %v, want %v", tt.err, tt.message, got, tt.want)
 		}
@@ -80,7 +80,7 @@ func TestCause(t *testing.T) {
 		want: io.EOF,
 	}, {
 		// caused error returns cause
-		err:  Annotate(io.EOF, "ignored"),
+		err:  Wrap(io.EOF, "ignored"),
 		want: io.EOF,
 	}, {
 		err:  x, // return from errors.New
@@ -92,10 +92,10 @@ func TestCause(t *testing.T) {
 		WithMessage(io.EOF, "whoops"),
 		io.EOF,
 	}, {
-		WithStack(nil),
+		AddStack(nil),
 		nil,
 	}, {
-		WithStack(io.EOF),
+		AddStack(io.EOF),
 		io.EOF,
 	}, {
 		AddStack(nil),
@@ -114,7 +114,7 @@ func TestCause(t *testing.T) {
 }
 
 func TestWrapfNil(t *testing.T) {
-	got := Annotate(nil, "no error")
+	got := Wrap(nil, "no error")
 	if got != nil {
 		t.Errorf("Wrapf(nil, \"no error\"): got %#v, expected nil", got)
 	}
@@ -127,12 +127,12 @@ func TestWrapf(t *testing.T) {
 		want    string
 	}{
 		{io.EOF, "read error", "read error: EOF"},
-		{Annotatef(io.EOF, "read error without format specifiers"), "client error", "client error: read error without format specifiers: EOF"},
-		{Annotatef(io.EOF, "read error with %d format specifier", 1), "client error", "client error: read error with 1 format specifier: EOF"},
+		{Wrapf(io.EOF, "read error without format specifiers"), "client error", "client error: read error without format specifiers: EOF"},
+		{Wrapf(io.EOF, "read error with %d format specifier", 1), "client error", "client error: read error with 1 format specifier: EOF"},
 	}
 
 	for _, tt := range tests {
-		got := Annotatef(tt.err, tt.message).Error()
+		got := Wrapf(tt.err, tt.message).Error()
 		if got != tt.want {
 			t.Errorf("Wrapf(%v, %q): got: %v, want %v", tt.err, tt.message, got, tt.want)
 		}
@@ -157,31 +157,14 @@ func TestErrorf(t *testing.T) {
 	}
 }
 
-func TestWithStackNil(t *testing.T) {
-	got := WithStack(nil)
+func TestAddStackNil(t *testing.T) {
+	got := AddStack(nil)
 	if got != nil {
-		t.Errorf("WithStack(nil): got %#v, expected nil", got)
+		t.Errorf("AddStack(nil): got %#v, expected nil", got)
 	}
 	got = AddStack(nil)
 	if got != nil {
 		t.Errorf("AddStack(nil): got %#v, expected nil", got)
-	}
-}
-
-func TestWithStack(t *testing.T) {
-	tests := []struct {
-		err  error
-		want string
-	}{
-		{io.EOF, "EOF"},
-		{WithStack(io.EOF), "EOF"},
-	}
-
-	for _, tt := range tests {
-		got := WithStack(tt.err).Error()
-		if got != tt.want {
-			t.Errorf("WithStack(%v): got: %v, want %v", tt.err, got, tt.want)
-		}
 	}
 }
 
@@ -218,14 +201,10 @@ func TestGetStackTracer(t *testing.T) {
 }
 
 func TestAddStackDedup(t *testing.T) {
-	stacked := WithStack(io.EOF)
+	stacked := AddStack(io.EOF)
 	err := AddStack(stacked)
 	if err != stacked {
 		t.Errorf("AddStack: got: %+v, want %+v", err, stacked)
-	}
-	err = WithStack(stacked)
-	if err == stacked {
-		t.Errorf("WithStack: got: %v, don't want %v", err, stacked)
 	}
 }
 
@@ -265,12 +244,12 @@ func TestErrorEquality(t *testing.T) {
 		errors.New("EOF"),
 		New("EOF"),
 		Errorf("EOF"),
-		Annotate(io.EOF, "EOF"),
-		Annotatef(io.EOF, "EOF%d", 2),
+		Wrap(io.EOF, "EOF"),
+		Wrapf(io.EOF, "EOF%d", 2),
 		WithMessage(nil, "whoops"),
 		WithMessage(io.EOF, "whoops"),
-		WithStack(io.EOF),
-		WithStack(nil),
+		AddStack(io.EOF),
+		AddStack(nil),
 		AddStack(io.EOF),
 		AddStack(nil),
 	}
@@ -284,7 +263,7 @@ func TestErrorEquality(t *testing.T) {
 
 func TestFind(t *testing.T) {
 	eNew := errors.New("error")
-	wrapped := Annotate(nilError{}, "nil")
+	wrapped := Wrap(nilError{}, "nil")
 	tests := []struct {
 		err    error
 		finder func(error) bool
