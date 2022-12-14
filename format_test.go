@@ -208,7 +208,7 @@ func TestFormatAddStack(t *testing.T) {
 			[]string{"EOF",
 				"message",
 				"github.com/gregwebs/errors.TestFormatAddStack\n" +
-					"\tgithub.com/gregwebs/errors/format_test.go:205"},
+					"\tgithub.com/gregwebs/errors/format_test.go:206"},
 		},
 
 		{
@@ -216,8 +216,6 @@ func TestFormatAddStack(t *testing.T) {
 			AddStack(Errorf("error%d", 1)),
 			"%+v",
 			[]string{"error1",
-				"github.com/gregwebs/errors.TestFormatAddStack\n" +
-					"\tgithub.com/gregwebs/errors/format_test.go:216",
 				"github.com/gregwebs/errors.TestFormatAddStack\n" +
 					"\tgithub.com/gregwebs/errors/format_test.go:216"},
 		}}
