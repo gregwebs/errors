@@ -185,6 +185,23 @@ func TestAddStack(t *testing.T) {
 	}
 }
 
+func TestAddStackSkip(t *testing.T) {
+	tests := []struct {
+		err  error
+		want string
+	}{
+		{io.EOF, "EOF"},
+		{AddStack(io.EOF), "EOF"},
+	}
+
+	for _, tt := range tests {
+		got := AddStackSkip(tt.err, 2).Error()
+		if got != tt.want {
+			t.Errorf("AddStack(%v): got: %v, want %v", tt.err, got, tt.want)
+		}
+	}
+}
+
 func TestGetStackTracer(t *testing.T) {
 	orig := io.EOF
 	if GetStackTracer(orig) != nil {

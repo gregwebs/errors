@@ -159,6 +159,17 @@ func AddStack(err error) error {
 	return &withStack{err, callers()}
 }
 
+// Same as AddStack but specify an additional number of callers to skip
+func AddStackSkip(err error, skip int) error {
+	if err == nil {
+		return nil
+	}
+	if HasStack(err) {
+		return err
+	}
+	return &withStack{err, callersSkip(skip + 3)}
+}
+
 // GetStackTracer will return the first StackTracer in the causer chain.
 // This function is used by AddStack to avoid creating redundant stack traces.
 //
