@@ -81,6 +81,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
+	"log"
 )
 
 // New returns an error with the supplied message.
@@ -130,15 +131,18 @@ func (f *fundamental) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			io.WriteString(s, f.msg)
+			writeString(s, f.msg)
 			f.stack.Format(s, verb)
+			return
+		} else if s.Flag('-') {
+			writeString(s, f.msg)
 			return
 		}
 		fallthrough
 	case 's':
-		io.WriteString(s, f.msg)
+		writeString(s, f.msg)
 	case 'q':
-		fmt.Fprintf(s, "%q", f.msg)
+		fprintf(s, "%q", f.msg)
 	}
 }
 
@@ -193,15 +197,18 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			fmt.Fprintf(s, "%+v", w.Unwrap())
+			fprintf(s, "%+v\n", w.Unwrap())
 			w.stack.Format(s, verb)
+			return
+		} else if s.Flag('-') {
+			fprintf(s, "%-v\n", w.Unwrap())
 			return
 		}
 		fallthrough
 	case 's':
-		io.WriteString(s, w.Error())
+		writeString(s, w.Error())
 	case 'q':
-		fmt.Fprintf(s, "%q", w.Error())
+		fprintf(s, "%q", w.Error())
 	}
 }
 
@@ -270,13 +277,17 @@ func (w *withMessage) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			fmt.Fprintf(s, "%+v\n", w.Unwrap())
-			io.WriteString(s, w.msg)
+			fprintf(s, "%+v\n", w.Unwrap())
+			writeString(s, w.msg)
+			return
+		} else if s.Flag('-') {
+			fprintf(s, "%-v\n", w.Unwrap())
+			writeString(s, w.msg)
 			return
 		}
 		fallthrough
 	case 's', 'q':
-		io.WriteString(s, w.Error())
+		writeString(s, w.Error())
 	}
 }
 
@@ -325,4 +336,21 @@ func Is(err, target error) bool {
 // A re-export of the standard library errors.As
 func As(err error, target any) bool {
 	return stderrors.As(err, target)
+}
+
+// log an error returned from a write function
+func writeLogError(_ int, err error) {
+	if err != nil {
+		log.Println(err.Error())
+	}
+}
+
+// io.WriteString but logs any errors
+func writeString(w io.Writer, s string) {
+	writeLogError(io.WriteString(w, s))
+}
+
+// fmt.Fprintf but logs any errors
+func fprintf(w io.Writer, format string, a ...any) {
+	writeLogError(fmt.Fprintf(w, format, a...))
 }

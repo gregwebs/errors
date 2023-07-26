@@ -487,11 +487,6 @@ func testFormatCompleteCompare(t *testing.T, n int, arg interface{}, format stri
 	}
 }
 
-type wrapper struct {
-	wrap func(err error) error
-	want []string
-}
-
 func prettyBlocks(blocks []string) string {
 	var out []string
 
@@ -500,6 +495,12 @@ func prettyBlocks(blocks []string) string {
 	}
 
 	return "   " + strings.Join(out, "\n   ")
+}
+
+/*
+type wrapper struct {
+	wrap func(err error) error
+	want []string
 }
 
 func testGenericRecursive(t *testing.T, beforeErr error, beforeWant []string, list []wrapper, maxDepth int) {
@@ -534,3 +535,4 @@ func testGenericRecursive(t *testing.T, beforeErr error, beforeWant []string, li
 		}
 	}
 }
+*/
