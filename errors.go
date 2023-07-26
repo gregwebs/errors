@@ -19,7 +19,7 @@
 //
 //	_, err := ioutil.ReadAll(r)
 //	if err != nil {
-//	        return errors.Annotate(err, "read failed")
+//	        return errors.Wrap(err, "read failed")
 //	}
 //
 // If additional control is required the errors.AddStack and errors.WithMessage
@@ -31,12 +31,7 @@
 // Using errors.Annotate constructs a stack of errors, adding context to the
 // preceding error. Depending on the nature of the error it may be necessary
 // to reverse the operation of errors.Annotate to retrieve the original error
-// for inspection. Any error value which implements this interface
-//
-//	interface {
-//	        Unwrap() error
-//	}
-//
+// for inspection. Any error value which implements the Unwrap interface
 // can be inspected one level deeper by the errors.Unwrap function. errors.Cause will recursively unwrap
 // the error. For example:
 //
@@ -53,10 +48,11 @@
 // be formatted by the fmt package. The following verbs are supported
 //
 //	%s    print the error. If the error has a Cause it will be
-//	      printed recursively
+//	      printed recursively with colon separations
 //	%v    see %s
 //	%+v   extended format. Each Frame of the error's StackTrace will
 //	      be printed in detail.
+//	%-v   similar to %s but newline separated. No stack traces included.
 //
 // # Retrieving the stack trace of an error or wrapper
 //
