@@ -253,13 +253,13 @@ func TestStackTraceFormat(t *testing.T) {
 		"%+v",
 		"\n" +
 			"github.com/gregwebs/errors.stackTrace\n" +
-			"\tgithub.com/gregwebs/errors/stack_test.go:210\n" +
+			"\tgithub.com/gregwebs/errors/stack_test.go:201\n" +
 			"github.com/gregwebs/errors.TestStackTraceFormat\n" +
-			"\tgithub.com/gregwebs/errors/stack_test.go:261",
+			"\tgithub.com/gregwebs/errors/stack_test.go:252",
 	}, {
 		stackTrace()[:2],
 		"%#v",
-		`\[\]errors.Frame{stack_test.go:210, stack_test.go:269}`,
+		`\[\]errors.Frame{stack_test.go:210, stack_test.go:260}`,
 	}}
 
 	for i, tt := range tests {
