@@ -13,8 +13,8 @@
 //
 // # Adding context to an error
 //
-// The errors.Annotate function returns a new error that adds context to the
-// original error by recording a stack trace at the point Annotate is called,
+// The errors.Wrap function returns a new error that adds context to the
+// original error by recording a stack trace at the point Wrap is called,
 // and the supplied message. For example
 //
 //	_, err := ioutil.ReadAll(r)
@@ -23,14 +23,14 @@
 //	}
 //
 // If additional control is required the errors.AddStack and errors.WithMessage
-// functions destructure errors.Annotate into its component operations of annotating
+// functions destructure errors.Wrap into its component operations of annotating
 // an error with a stack trace and an a message, respectively.
 //
 // # Retrieving the cause of an error
 //
-// Using errors.Annotate constructs a stack of errors, adding context to the
+// Using errors.Wrap constructs a stack of errors, adding context to the
 // preceding error. Depending on the nature of the error it may be necessary
-// to reverse the operation of errors.Annotate to retrieve the original error
+// to reverse the operation of errors.Wrap to retrieve the original error
 // for inspection. Any error value which implements the Unwrap interface
 // can be inspected one level deeper by the errors.Unwrap function. errors.Cause will recursively unwrap
 // the error. For example:
@@ -56,7 +56,7 @@
 //
 // # Retrieving the stack trace of an error or wrapper
 //
-// New, Errorf, Annotate, and Annotatef record a stack trace at the point they are invoked.
+// New, Errorf, Wrap, and Wrapf record a stack trace at the point they are invoked.
 // This information can be retrieved with the StackTracer interface that returns
 // a StackTrace. Where errors.StackTrace is defined as
 //
@@ -81,6 +81,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
+	"log"
 )
 
 // New returns an error with the supplied message.
@@ -105,7 +106,7 @@ func Errorf(format string, args ...interface{}) error {
 
 // StackTraceAware is an optimization to avoid repetitive traversals of an error chain.
 // HasStack checks for this marker first.
-// Annotate/Wrap and Annotatef/Wrapf will produce this marker.
+// Wrap and Wrapf will produce this marker.
 type StackTraceAware interface {
 	HasStack() bool
 }
@@ -130,13 +131,13 @@ func (f *fundamental) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			io.WriteString(s, f.msg)
+			writeString(s, f.msg)
 			f.stack.Format(s, verb)
 			return
 		}
 		fallthrough
 	case 's':
-		io.WriteString(s, f.msg)
+		writeString(s, f.msg)
 	case 'q':
 		fmt.Fprintf(s, "%q", f.msg)
 	}
@@ -199,15 +200,15 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 		}
 		fallthrough
 	case 's':
-		io.WriteString(s, w.Error())
+		writeString(s, w.Error())
 	case 'q':
 		fmt.Fprintf(s, "%q", w.Error())
 	}
 }
 
 // Wrap returns an error annotating err with a stack trace
-// at the point Annotate is called, and the supplied message.
-// If err is nil, Annotate returns nil.
+// at the point Wrap is called, and the supplied message.
+// If err is nil, Wrap returns nil.
 func Wrap(err error, message string) error {
 	if err == nil {
 		return nil
@@ -271,12 +272,12 @@ func (w *withMessage) Format(s fmt.State, verb rune) {
 	case 'v':
 		if s.Flag('+') {
 			fmt.Fprintf(s, "%+v\n", w.Unwrap())
-			io.WriteString(s, w.msg)
+			writeString(s, w.msg)
 			return
 		}
 		fallthrough
 	case 's', 'q':
-		io.WriteString(s, w.Error())
+		writeString(s, w.Error())
 	}
 }
 
@@ -325,4 +326,13 @@ func Is(err, target error) bool {
 // A re-export of the standard library errors.As
 func As(err error, target any) bool {
 	return stderrors.As(err, target)
+}
+
+var HandleWriteError = func(err error) {
+	log.Println(err)
+}
+
+func writeString(w io.Writer, s string) {
+	_, err := io.WriteString(w, s)
+	HandleWriteError(err)
 }
