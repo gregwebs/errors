@@ -26,7 +26,7 @@ func TestFrameLine(t *testing.T) {
 			var pc, _, _, _ = runtime.Caller(1)
 			return Frame(pc)
 		}(),
-		28,
+		23,
 	}, {
 		Frame(0), // invalid PC
 		0,
@@ -211,11 +211,11 @@ func TestStackTraceFormat(t *testing.T) {
 	}{{
 		nil,
 		"%s",
-		`\[\]`,
+		`[]`,
 	}, {
 		nil,
 		"%v",
-		`\[\]`,
+		`[]`,
 	}, {
 		nil,
 		"%+v",
@@ -223,15 +223,15 @@ func TestStackTraceFormat(t *testing.T) {
 	}, {
 		nil,
 		"%#v",
-		`\[\]errors.Frame\(nil\)`,
+		`[]errors.Frame(nil)`,
 	}, {
 		make(StackTrace, 0),
 		"%s",
-		`\[\]`,
+		`[]`,
 	}, {
 		make(StackTrace, 0),
 		"%v",
-		`\[\]`,
+		`[]`,
 	}, {
 		make(StackTrace, 0),
 		"%+v",
@@ -239,31 +239,31 @@ func TestStackTraceFormat(t *testing.T) {
 	}, {
 		make(StackTrace, 0),
 		"%#v",
-		`\[\]errors.Frame{}`,
+		`[]errors.Frame{}`,
 	}, {
 		stackTrace()[:2],
 		"%s",
-		`\[stack_test.go stack_test.go\]`,
+		`[stack_test.go stack_test.go]`,
 	}, {
 		stackTrace()[:2],
 		"%v",
-		`[stack_test.go:207 stack_test.go:254]`,
+		`[stack_test.go:201 stack_test.go:248]`,
 	}, {
 		stackTrace()[:2],
 		"%+v",
 		"\n" +
 			"github.com/gregwebs/errors.stackTrace\n" +
-			"\tgithub.com/gregwebs/errors/stack_test.go:210\n" +
+			"\tgithub.com/gregwebs/errors/stack_test.go:201\n" +
 			"github.com/gregwebs/errors.TestStackTraceFormat\n" +
-			"\tgithub.com/gregwebs/errors/stack_test.go:261",
+			"\tgithub.com/gregwebs/errors/stack_test.go:252",
 	}, {
 		stackTrace()[:2],
 		"%#v",
-		`\[\]errors.Frame{stack_test.go:210, stack_test.go:269}`,
+		`[]errors.Frame{stack_test.go:201, stack_test.go:260}`,
 	}}
 
 	for i, tt := range tests {
-		testFormatRegexp(t, i, tt.StackTrace, tt.format, tt.want)
+		testFormatString(t, i, tt.StackTrace, tt.format, tt.want)
 	}
 }
 
