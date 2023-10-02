@@ -188,7 +188,8 @@ type withStack struct {
 	*stack
 }
 
-func (w *withStack) Unwrap() error { return w.error }
+func (w *withStack) Unwrap() error         { return w.error }
+func (w *withStack) ErrorNoUnwrap() string { return "" }
 
 func (w *withStack) Format(s fmt.State, verb rune) {
 	switch verb {
@@ -263,9 +264,10 @@ type withMessage struct {
 	causeHasStack bool
 }
 
-func (w *withMessage) Error() string  { return w.msg + ": " + w.cause.Error() }
-func (w *withMessage) Unwrap() error  { return w.cause }
-func (w *withMessage) HasStack() bool { return w.causeHasStack }
+func (w *withMessage) Error() string         { return w.msg + ": " + w.cause.Error() }
+func (w *withMessage) Unwrap() error         { return w.cause }
+func (w *withMessage) ErrorNoUnwrap() string { return w.msg }
+func (w *withMessage) HasStack() bool        { return w.causeHasStack }
 
 func (w *withMessage) Format(s fmt.State, verb rune) {
 	switch verb {
@@ -335,4 +337,22 @@ var HandleWriteError = func(err error) {
 func writeString(w io.Writer, s string) {
 	_, err := io.WriteString(w, s)
 	HandleWriteError(err)
+}
+
+// ErrorNoUnwrap is designed to give just the message of the individual error without any unwrapping.
+//
+// The existing Error() string interface loses all structure of error data.
+// This extends to all errors that it is wrapping, which will get included in the output of Error()
+//
+// Existing Error() definitions look like this:
+//
+//	func (hasWrapped) Error() string { return hasWrapped.message + ": " + hasWrapped.Unwrap().Error() }
+//
+// An ErrorNoUnwrap() definitions look like this:
+//
+//	func (hasWrapped) Error() string { return hasWrapped.message }
+//
+// This only needs to be defined if an error has an Unwrap method
+type ErrorNotUnwrapped interface {
+	ErrorNoUnwrap() string
 }
