@@ -203,3 +203,29 @@ func ExampleCause_printf() {
 
 	// Output: failed: hello world
 }
+
+func ExampleStructuredErr() {
+	err := errors.Wraps(
+		errors.New("cause"),
+		"structured",
+		"key", "value",
+		"int", 1,
+	)
+
+	fmt.Println(err.Error())
+	// Output: structured key=value int=1: cause
+}
+
+func ExampleSlogRecord() {
+	err := errors.Wraps(
+		errors.New("cause"),
+		"structured",
+		"key", "value",
+		"int", 1,
+	)
+
+	rec := errors.SlogRecord(err)
+	fmt.Println(rec.Message)
+	// Output:
+	// structured: cause
+}
