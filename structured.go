@@ -29,30 +29,10 @@ func (se StructuredErr) Error() string {
 
 	stext := structureAsText(se.Record)
 	if stext != "" {
-		msg += " " + stext
+		msg = joinZero(" ", msg, stext)
 	}
 
-	return msg + ": " + se.err.Error()
-}
-
-// TODO: should make own slog handler instead of re-using text
-// This would avoid using ReplaceAttr and removing a newline
-func structureAsText(record slog.Record) string {
-	buf := new(bytes.Buffer)
-	hOpts := slog.HandlerOptions{
-		AddSource: false,
-		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-			if a.Key == slog.MessageKey || a.Key == slog.TimeKey || a.Key == slog.LevelKey {
-				return slog.Attr{}
-			}
-			return a
-		},
-	}
-	if err := slog.NewTextHandler(buf, &hOpts).Handle(context.Background(), record); err != nil {
-		panic(err)
-	}
-	str := buf.String()
-	return str[:len(str)-1]
+	return joinZero(": ", msg, se.err.Error())
 }
 
 func (se StructuredErr) Unwrap() error         { return se.err }
@@ -64,7 +44,7 @@ func (se StructuredErr) Format(s fmt.State, verb rune) {
 	case 'v':
 		if s.Flag('+') {
 			fmt.Fprintf(s, "%+v\n", se.Unwrap())
-			writeString(s, se.msg+" "+structureAsText(se.Record))
+			writeString(s, joinZero(" ", se.msg, structureAsText(se.Record)))
 			return
 		}
 		fallthrough
@@ -88,7 +68,7 @@ func WrapsCtx(ctx context.Context, err error, msg string, args ...interface{}) S
 	runtime.Callers(4, pcs[:])
 	pc = pcs[0]
 
-	record := slog.NewRecord(time.Now(), slog.LevelError, msg+": "+err.Error(), pc)
+	record := slog.NewRecord(time.Now(), slog.LevelError, joinZero(": ", msg, err.Error()), pc)
 	record.Add(args...)
 
 	// TODO: use the exact same stack for the error and the record
@@ -115,18 +95,10 @@ func SlogRecord(inputErr error) *slog.Record {
 		// Still we will collect the records
 		if !msgDone {
 			if nu, ok := err.(ErrorNotUnwrapped); ok {
-				if msg == "" {
-					msg = nu.ErrorNoUnwrap()
-				} else {
-					msg += ": " + nu.ErrorNoUnwrap()
-				}
+				msg = joinZero(": ", msg, nu.ErrorNoUnwrap())
 			} else {
 				msgDone = true
-				if msg == "" {
-					msg = err.Error()
-				} else {
-					msg += ": " + err.Error()
-				}
+				msg = joinZero(": ", msg, err.Error())
 			}
 		}
 
@@ -149,4 +121,33 @@ func SlogRecord(inputErr error) *slog.Record {
 		record.Message = msg
 	}
 	return record
+}
+
+// checks to see if the first string is empty
+// In that case just return the second string
+func joinZero(delim string, str1 string, str2 string) string {
+	if str1 == "" {
+		return str2
+	}
+	return str1 + delim + str2
+}
+
+// TODO: should make own slog handler instead of re-using text
+// This would avoid using ReplaceAttr and removing a newline
+func structureAsText(record slog.Record) string {
+	buf := new(bytes.Buffer)
+	hOpts := slog.HandlerOptions{
+		AddSource: false,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.MessageKey || a.Key == slog.TimeKey || a.Key == slog.LevelKey {
+				return slog.Attr{}
+			}
+			return a
+		},
+	}
+	if err := slog.NewTextHandler(buf, &hOpts).Handle(context.Background(), record); err != nil {
+		panic(err)
+	}
+	str := buf.String()
+	return str[:len(str)-1]
 }
