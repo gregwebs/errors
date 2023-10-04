@@ -335,8 +335,9 @@ var HandleWriteError = func(err error) {
 }
 
 func writeString(w io.Writer, s string) {
-	_, err := io.WriteString(w, s)
-	HandleWriteError(err)
+	if _, err := io.WriteString(w, s); err != nil {
+		HandleWriteError(err)
+	}
 }
 
 // ErrorNoUnwrap is designed to give just the message of the individual error without any unwrapping.
