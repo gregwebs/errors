@@ -14,10 +14,9 @@ type HasSlogRecord interface {
 }
 
 type StructuredErr struct {
-	Record  slog.Record
-	err     error
-	msg     string
-	Context context.Context
+	Record slog.Record
+	err    error
+	msg    string
 }
 
 func (se StructuredErr) GetSlogRecord() slog.Record {
@@ -56,13 +55,6 @@ func (se StructuredErr) Format(s fmt.State, verb rune) {
 // S=structured
 // Accepts as args any valid slog args.  These will generate an slog Record
 func Wraps(err error, msg string, args ...interface{}) StructuredErr {
-	return WrapsCtx(context.Background(), err, msg, args...)
-}
-
-// S=structured
-// Ctx=Context
-// Accepts as args any valid slog args.  These will generate an slog Record
-func WrapsCtx(ctx context.Context, err error, msg string, args ...interface{}) StructuredErr {
 	var pc uintptr
 	var pcs [1]uintptr
 	runtime.Callers(4, pcs[:])
@@ -73,10 +65,9 @@ func WrapsCtx(ctx context.Context, err error, msg string, args ...interface{}) S
 
 	// TODO: use the exact same stack for the error and the record
 	return StructuredErr{
-		Record:  record,
-		err:     AddStackSkip(err, 1),
-		msg:     msg,
-		Context: ctx,
+		Record: record,
+		err:    AddStackSkip(err, 1),
+		msg:    msg,
 	}
 }
 
