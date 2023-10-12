@@ -57,7 +57,7 @@ func (se StructuredErr) Format(s fmt.State, verb rune) {
 func Wraps(err error, msg string, args ...interface{}) StructuredErr {
 	var pc uintptr
 	var pcs [1]uintptr
-	runtime.Callers(4, pcs[:])
+	runtime.Callers(2, pcs[:])
 	pc = pcs[0]
 
 	record := slog.NewRecord(time.Now(), slog.LevelError, joinZero(": ", msg, err.Error()), pc)
