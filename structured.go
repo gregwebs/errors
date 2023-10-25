@@ -45,7 +45,7 @@ type hasClientData interface {
 
 func (se StructuredErr) GetClientData() interface{} {
 	if cd, ok := se.err.(hasClientData); ok {
-		return cd
+		return cd.GetClientData()
 	}
 	return nil
 }
