@@ -38,6 +38,18 @@ func (se StructuredErr) Unwrap() error         { return se.err }
 func (se StructuredErr) ErrorNoUnwrap() string { return se.msg }
 func (se StructuredErr) HasStack() bool        { return true }
 
+// This interface is used by the errcode package
+type hasClientData interface {
+	GetClientData() interface{}
+}
+
+func (se StructuredErr) GetClientData() interface{} {
+	if cd, ok := se.err.(hasClientData); ok {
+		return cd
+	}
+	return nil
+}
+
 func (se StructuredErr) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
