@@ -67,6 +67,9 @@ func (se StructuredErr) Format(s fmt.State, verb rune) {
 // S=structured
 // Accepts as args any valid slog args.  These will generate an slog Record
 func Wraps(err error, msg string, args ...interface{}) StructuredErr {
+	if err == nil {
+		err = New("errors.Wraps: given error is nil")
+	}
 	var pc uintptr
 	var pcs [1]uintptr
 	runtime.Callers(2, pcs[:])
