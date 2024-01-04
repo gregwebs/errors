@@ -42,3 +42,12 @@ func TestStructured(t *testing.T) {
 		t.Errorf("expected stack trace with file")
 	}
 }
+
+func TestStructuredNil(t *testing.T) {
+	err := Wraps(nil, "testing nil error", "test", 1)
+	got := err.Error()
+	expected := "testing nil error test=1: errors.Wraps: given error is nil"
+	if got != expected {
+		t.Errorf("\nexpected: '%s'\n but got: '%s'", expected, got)
+	}
+}
