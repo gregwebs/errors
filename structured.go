@@ -66,6 +66,7 @@ func (se StructuredErr) Format(s fmt.State, verb rune) {
 
 // S=structured
 // Accepts as args any valid slog args.  These will generate an slog Record
+// Also accepts []slog.Attr as a single argument to avoid having to cast that argument.
 func Wraps(err error, msg string, args ...interface{}) StructuredErr {
 	if err == nil {
 		err = New("errors.Wraps: given error is nil")
@@ -76,7 +77,19 @@ func Wraps(err error, msg string, args ...interface{}) StructuredErr {
 	pc = pcs[0]
 
 	record := slog.NewRecord(time.Now(), slog.LevelError, joinZero(": ", msg, err.Error()), pc)
-	record.Add(args...)
+	// support passing an array of Attr: otherwise would require a cast
+	for loop := true; loop && len(args) > 0; {
+		switch attrs := any(args[0]).(type) {
+		case []slog.Attr:
+			record.AddAttrs(attrs...)
+			args = args[1:]
+		default:
+			loop = false
+		}
+	}
+	if len(args) > 0 {
+		record.Add(args...)
+	}
 
 	// TODO: use the exact same stack for the error and the record
 	return StructuredErr{

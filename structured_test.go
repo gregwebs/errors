@@ -3,6 +3,7 @@ package errors
 import (
 	"bytes"
 	"context"
+	"errors"
 	"log/slog"
 	"strings"
 	"testing"
@@ -47,6 +48,18 @@ func TestStructuredNil(t *testing.T) {
 	err := Wraps(nil, "testing nil error", "test", 1)
 	got := err.Error()
 	expected := "testing nil error test=1: errors.Wraps: given error is nil"
+	if got != expected {
+		t.Errorf("\nexpected: '%s'\n but got: '%s'", expected, got)
+	}
+}
+
+func TestStructuredAttr(t *testing.T) {
+	attrs := []slog.Attr{}
+	attrs = append(attrs, slog.String("string", "test"))
+	attrs = append(attrs, slog.Int("int", 1))
+	err := Wraps(errors.New("error"), "testing attrs", attrs)
+	got := err.Error()
+	expected := "testing attrs string=test int=1: error"
 	if got != expected {
 		t.Errorf("\nexpected: '%s'\n but got: '%s'", expected, got)
 	}
