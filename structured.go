@@ -100,10 +100,16 @@ func Wraps(err error, msg string, args ...interface{}) StructuredErr {
 }
 
 // SlogRecord traverses the error chain, calling Unwrap(), to look for slog Records
-// All records will be merged
-// An error string is given as well
-// This string may contain some of the structured information
-// if the error does not defined ErrorNoUnwrap from the interface ErrorNotUnwrapped
+// All records will be merged and mesage strings are joined together
+// The message string may contain some of the structured information
+// This depends on defining ErrorNoUnwrap from the interface ErrorNotUnwrapped
+//
+//	if record := errors.SlogRecord(errIn); record != nil {
+//		record.Add(logArgs...)
+//		if err := slog.Default().Handler().Handle(ctx, *record); err != nil {
+//			slog.ErrorContext(ctx, fmt.Sprintf("%+v", err))
+//		}
+//	}
 func SlogRecord(inputErr error) *slog.Record {
 	var msg string
 	var record *slog.Record
@@ -140,6 +146,23 @@ func SlogRecord(inputErr error) *slog.Record {
 		record.Message = msg
 	}
 	return record
+}
+
+// SlogTextBuffer produces a Handler that writes to a buffer
+// The buffer output can be retrieved with the returned function
+//
+//	if record := errors.SlogRecord(err); record != nil {
+//		handler, output := errors.SlogTextBuffer(slog.HandlerOptions{AddSource: false})
+//		if err := handler.Handle(ctx, *record); err != nil {
+//			zap.S().Errorf("%+v", err)
+//		} else {
+//			zap.S().Error(output())
+//		}
+//	}
+func SlogTextBuffer(opts *slog.HandlerOptions) (slog.Handler, func() string) {
+	buf := bytes.NewBuffer([]byte{})
+	h := slog.NewTextHandler(buf, opts)
+	return h, func() string { return buf.String() }
 }
 
 // checks to see if the first string is empty
