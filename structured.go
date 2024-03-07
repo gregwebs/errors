@@ -54,8 +54,8 @@ func (se StructuredErr) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			fmt.Fprintf(s, "%+v\n", se.Unwrap())
-			writeString(s, joinZero(" ", se.msg, structureAsText(se.Record)))
+			formatterPlusV(s, verb, se.Unwrap())
+			writeString(s, "\n"+joinZero(" ", se.msg, structureAsText(se.Record)))
 			return
 		}
 		fallthrough
