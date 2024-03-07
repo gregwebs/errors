@@ -195,7 +195,7 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			fmt.Fprintf(s, "%+v", w.Unwrap())
+			formatterPlusV(s, verb, w.Unwrap())
 			w.stack.Format(s, verb)
 			return
 		}
@@ -269,12 +269,20 @@ func (w *withMessage) Unwrap() error         { return w.cause }
 func (w *withMessage) ErrorNoUnwrap() string { return w.msg }
 func (w *withMessage) HasStack() bool        { return w.causeHasStack }
 
+func formatterPlusV(s fmt.State, verb rune, err error) {
+	if f, ok := err.(fmt.Formatter); ok {
+		f.Format(s, verb)
+	} else {
+		fmt.Fprintf(s, "%+v", err)
+	}
+}
+
 func (w *withMessage) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			fmt.Fprintf(s, "%+v\n", w.Unwrap())
-			writeString(s, w.msg)
+			formatterPlusV(s, verb, w.Unwrap())
+			writeString(s, "\n"+w.msg)
 			return
 		}
 		fallthrough
