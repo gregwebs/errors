@@ -204,7 +204,7 @@ func ExampleCause_printf() {
 	// Output: failed: hello world
 }
 
-func ExampleStructuredErr() {
+func ExampleStructuredError() {
 	err := errors.Wraps(
 		errors.New("cause"),
 		"structured",

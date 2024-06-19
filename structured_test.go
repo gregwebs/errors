@@ -23,7 +23,7 @@ func TestStructured(t *testing.T) {
 		"int", 3,
 	)
 
-	if numAttrs := err.Record.NumAttrs(); numAttrs != 2 {
+	if numAttrs := err.GetSlogRecord().NumAttrs(); numAttrs != 2 {
 		t.Errorf("expected 2 attributes, got %d for %s", numAttrs, err.Error())
 	}
 	record := SlogRecord(err)
@@ -45,11 +45,8 @@ func TestStructured(t *testing.T) {
 }
 
 func TestStructuredNil(t *testing.T) {
-	err := Wraps(nil, "testing nil error", "test", 1)
-	got := err.Error()
-	expected := "testing nil error test=1: errors.Wraps: given error is nil"
-	if got != expected {
-		t.Errorf("\nexpected: '%s'\n but got: '%s'", expected, got)
+	if err := Wraps(nil, "testing nil error", "test", 1); err != nil {
+		t.Errorf("expected nil")
 	}
 }
 

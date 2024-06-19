@@ -13,17 +13,22 @@ type HasSlogRecord interface {
 	GetSlogRecord() slog.Record
 }
 
-type StructuredErr struct {
+type StructuredError interface {
+	HasSlogRecord
+	error
+}
+
+type structuredErr struct {
 	Record slog.Record
 	err    error
 	msg    string
 }
 
-func (se StructuredErr) GetSlogRecord() slog.Record {
+func (se structuredErr) GetSlogRecord() slog.Record {
 	return se.Record
 }
 
-func (se StructuredErr) Error() string {
+func (se structuredErr) Error() string {
 	msg := se.msg
 
 	stext := structureAsText(se.Record)
@@ -34,23 +39,23 @@ func (se StructuredErr) Error() string {
 	return joinZero(": ", msg, se.err.Error())
 }
 
-func (se StructuredErr) Unwrap() error         { return se.err }
-func (se StructuredErr) ErrorNoUnwrap() string { return se.msg }
-func (se StructuredErr) HasStack() bool        { return true }
+func (se structuredErr) Unwrap() error         { return se.err }
+func (se structuredErr) ErrorNoUnwrap() string { return se.msg }
+func (se structuredErr) HasStack() bool        { return true }
 
 // This interface is used by the errcode package
 type hasClientData interface {
 	GetClientData() interface{}
 }
 
-func (se StructuredErr) GetClientData() interface{} {
+func (se structuredErr) GetClientData() interface{} {
 	if cd, ok := se.err.(hasClientData); ok {
 		return cd.GetClientData()
 	}
 	return nil
 }
 
-func (se StructuredErr) Format(s fmt.State, verb rune) {
+func (se structuredErr) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
@@ -67,9 +72,9 @@ func (se StructuredErr) Format(s fmt.State, verb rune) {
 // S=structured
 // Accepts as args any valid slog args.  These will generate an slog Record
 // Also accepts []slog.Attr as a single argument to avoid having to cast that argument.
-func Wraps(err error, msg string, args ...interface{}) StructuredErr {
+func Wraps(err error, msg string, args ...interface{}) StructuredError {
 	if err == nil {
-		err = New("errors.Wraps: given error is nil")
+		return nil
 	}
 	var pc uintptr
 	var pcs [1]uintptr
@@ -92,7 +97,7 @@ func Wraps(err error, msg string, args ...interface{}) StructuredErr {
 	}
 
 	// TODO: use the exact same stack for the error and the record
-	return StructuredErr{
+	return structuredErr{
 		Record: record,
 		err:    AddStackSkip(err, 1),
 		msg:    msg,
