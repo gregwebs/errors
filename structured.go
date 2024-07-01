@@ -57,8 +57,17 @@ func (se structuredErr) Format(s fmt.State, verb rune) {
 	}
 }
 
-// S=structured
-// Accepts as args any valid slog args.  These will generate an slog Record
+// Slog creates an error that instead of generating a format string generates a structured slog Record.
+// Accepts as args any valid slog args.
+// Also accepts []slog.Attr as a single argument to avoid having to cast that argument.
+// The slog Record can be retrieved with SlogRecord.
+// Structured errors are more often created by wrapping existing errors with Wraps.
+func Slog(msg string, args ...interface{}) StructuredError {
+	return Wraps(New(""), msg, args...)
+}
+
+// Wraps ends with an "s" to indicate it is Structured.
+// Accepts as args any valid slog args. These will generate an slog Record
 // Also accepts []slog.Attr as a single argument to avoid having to cast that argument.
 func Wraps(err error, msg string, args ...interface{}) StructuredError {
 	if err == nil {
@@ -158,11 +167,15 @@ func SlogTextBuffer(opts *slog.HandlerOptions) (slog.Handler, func() string) {
 	return h, func() string { return buf.String() }
 }
 
-// checks to see if the first string is empty
-// In that case just return the second string
+// Checks to see if an argument is the empty string.
+// In that case just return the non-zero argument.
+// Otherwise join the strings with the deliminator
 func joinZero(delim string, str1 string, str2 string) string {
 	if str1 == "" {
 		return str2
+	}
+	if str2 == "" {
+		return str1
 	}
 	return str1 + delim + str2
 }
