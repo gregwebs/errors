@@ -216,6 +216,17 @@ func ExampleStructuredError() {
 	// Output: structured key=value int=1: cause
 }
 
+func ExampleSlog() {
+	err := errors.Slog(
+		"cause",
+		"key", "value",
+		"int", 1,
+	)
+
+	fmt.Println(err.Error())
+	// Output: cause key=value int=1
+}
+
 func ExampleSlogRecord() {
 	err := errors.Wraps(
 		errors.New("cause"),
