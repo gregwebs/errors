@@ -9,13 +9,31 @@ import (
 	"time"
 )
 
+// HasSlogRecord is used to retrieve an slog.Record.
+// A StructuredError defines it.
+// Alternatively SlogMessager and SlogAttributer can be defined.
 type HasSlogRecord interface {
 	GetSlogRecord() slog.Record
 }
 
+// StructuredError is returned by Wraps and Slog
 type StructuredError interface {
-	HasSlogRecord
 	error
+	HasSlogRecord
+}
+
+// SlogMessager provides a string that can be used as the slog message.
+// Normally SlogAttributer is defined as well.
+// When defining error types this may be simpler to use than defining HasSlogRecord.
+type SlogMessager interface {
+	SlogMsg() string
+}
+
+// SlogAttributer provides a string that can be used as the slog message.
+// Normally SlogMessager is defined as well.
+// When defining error types this may be simpler to use than defining HasSlogRecord.
+type SlogAttributer interface {
+	SlogAttrs() []slog.Attr
 }
 
 type structuredErr struct {
@@ -39,9 +57,9 @@ func (se structuredErr) Error() string {
 	return joinZero(": ", msg, se.err.Error())
 }
 
-func (se structuredErr) Unwrap() error         { return se.err }
-func (se structuredErr) ErrorNoUnwrap() string { return se.msg }
-func (se structuredErr) HasStack() bool        { return true }
+func (se structuredErr) Unwrap() error   { return se.err }
+func (se structuredErr) SlogMsg() string { return se.msg }
+func (se structuredErr) HasStack() bool  { return true }
 
 func (se structuredErr) Format(s fmt.State, verb rune) {
 	switch verb {
@@ -117,16 +135,18 @@ func SlogRecord(inputErr error) *slog.Record {
 	var record *slog.Record
 	msgDone := false
 	WalkDeep(inputErr, func(err error) bool {
-		// Once we reach a message that does not understand ErrorNotUnwrapped
-		// We must stop the traversal for the messages
-		// Still we will collect the records
+		// Gather messages until we reach a message that does not understand ErrorNotUnwrapped, SlogMessager, or HasSlogRecord
 		if !msgDone {
-			if nu, ok := err.(ErrorNotUnwrapped); ok {
-				msg = joinZero(": ", msg, nu.ErrorNoUnwrap())
+			var nextMsg string
+			if slogMsg := slogMsg(err); slogMsg != "" {
+				nextMsg = slogMsg
+			} else if noUnwrap, ok := err.(ErrorNotUnwrapped); ok {
+				nextMsg = noUnwrap.ErrorNoUnwrap()
 			} else {
 				msgDone = true
-				msg = joinZero(": ", msg, err.Error())
+				nextMsg = err.Error()
 			}
+			msg = joinZero(": ", msg, nextMsg)
 		}
 
 		if hr, ok := err.(HasSlogRecord); ok {
@@ -139,6 +159,12 @@ func SlogRecord(inputErr error) *slog.Record {
 					record.AddAttrs(attr)
 					return true
 				})
+			}
+		} else if sloga, ok := err.(SlogAttributer); ok {
+			if record == nil {
+				record = toSlogRecord(sloga, 5)
+			} else {
+				record.AddAttrs(sloga.SlogAttrs()...)
 			}
 		}
 
@@ -165,6 +191,51 @@ func SlogTextBuffer(opts *slog.HandlerOptions) (slog.Handler, func() string) {
 	buf := bytes.NewBuffer([]byte{})
 	h := slog.NewTextHandler(buf, opts)
 	return h, func() string { return buf.String() }
+}
+
+// slogMsg returns a message from a SlogMessager or a HasSlogRecord.
+// Otherwise it returns an empty string
+func slogMsg(err any) string {
+	if slogm, ok := err.(SlogMessager); ok {
+		return slogm.SlogMsg()
+	} else if hr, ok := err.(HasSlogRecord); ok {
+		return hr.GetSlogRecord().Message
+	} else {
+		return ""
+	}
+}
+
+/*
+// slogAttributes returns a message from a SlogAttributer or a HasSlogRecord.
+// Otherwise it returns a nil array
+func slogAttributes(err any) []slog.Attr {
+	if sloga, ok := err.(SlogAttributer); ok {
+		return sloga.SlogAttrs()
+	} else if hr, ok := err.(HasSlogRecord); ok {
+		record := hr.GetSlogRecord()
+		attrs := make([]slog.Attr, 0, record.NumAttrs())
+		record.Attrs(func(attr slog.Attr) bool {
+			attrs = append(attrs, attr)
+			return true
+		})
+		return attrs
+	} else {
+		return nil
+	}
+}
+*/
+
+func toSlogRecord(err SlogAttributer, skip int) *slog.Record {
+	if skip <= 0 {
+		skip = 2
+	}
+	var pc uintptr
+	var pcs [1]uintptr
+	runtime.Callers(skip, pcs[:])
+	pc = pcs[0]
+	record := slog.NewRecord(time.Now(), slog.LevelError, slogMsg(err), pc)
+	record.AddAttrs(err.SlogAttrs()...)
+	return &record
 }
 
 // Checks to see if an argument is the empty string.
@@ -198,4 +269,12 @@ func structureAsText(record slog.Record) string {
 	}
 	str := buf.String()
 	return str[:len(str)-1]
+}
+
+func textFromRecord(err SlogAttributer) string {
+	record := toSlogRecord(err, 0)
+	if record == nil {
+		return ""
+	}
+	return structureAsText(*record)
 }
