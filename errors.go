@@ -359,7 +359,7 @@ func writeString(w io.Writer, s string) {
 //
 // An ErrorNoUnwrap() definitions look like this:
 //
-//	func (hasWrapped) Error() string { return hasWrapped.message }
+//	func (hasWrapped) ErrorNoUnwrap() string { return hasWrapped.message }
 //
 // This only needs to be defined if an error has an Unwrap method
 type ErrorNotUnwrapped interface {
