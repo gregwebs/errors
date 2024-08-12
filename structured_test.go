@@ -114,3 +114,81 @@ func TestStructuredAttr(t *testing.T) {
 		t.Errorf("\nexpected: '%s'\n but got: '%s'", expected, got)
 	}
 }
+
+type slogAttrs struct {
+	inner error
+}
+
+func (sa slogAttrs) Unwrap() error {
+	return sa.inner
+}
+
+func (sa slogAttrs) Error() string {
+	return textFromRecord(sa)
+}
+
+func (sa slogAttrs) SlogMsg() string {
+	return "cause1"
+}
+
+func (sa slogAttrs) SlogAttrs() []slog.Attr {
+	return []slog.Attr{
+		slog.String("key", "value"),
+		slog.Int("int", 1),
+	}
+}
+
+func TestStructuredAttrsInner(t *testing.T) {
+	err := Wraps(
+		slogAttrs{},
+		"structured2",
+		"key", "value",
+		"int", 3,
+	)
+
+	if numAttrs := err.GetSlogRecord().NumAttrs(); numAttrs != 2 {
+		t.Errorf("expected 2 attributes, got %d for %s", numAttrs, err.Error())
+	}
+	record := SlogRecord(err)
+	if numAttrs := record.NumAttrs(); numAttrs != 4 {
+		t.Errorf("expected 4 attributes, got %d for %s", numAttrs, err.Error())
+	}
+
+	// Test stack trace
+	hOpts := slog.HandlerOptions{
+		AddSource: true,
+	}
+	handler, getBuf := SlogTextBuffer(&hOpts)
+	if err := handler.Handle(context.Background(), *record); err != nil {
+		t.Fatalf("error writing out record %+v", err)
+	}
+	if !strings.Contains(getBuf(), "structured_test.go") {
+		t.Errorf("expected stack trace with file")
+	}
+}
+
+func TestStructuredAttrsOuter(t *testing.T) {
+	errInner := Slog(
+		"structured2",
+		"key", "value",
+		"int", 3,
+	)
+	err := slogAttrs{inner: errInner}
+	record := SlogRecord(err)
+	if numAttrs := record.NumAttrs(); numAttrs != 4 {
+		t.Errorf("expected 4 attributes, got %d for %s", numAttrs, err.Error())
+	}
+
+	// Test stack trace
+	hOpts := slog.HandlerOptions{
+		AddSource: true,
+	}
+	handler, getBuf := SlogTextBuffer(&hOpts)
+	if err := handler.Handle(context.Background(), *record); err != nil {
+		t.Fatalf("error writing out record %+v", err)
+	}
+	bufOut := getBuf()
+	if !strings.Contains(bufOut, "structured_test.go") {
+		t.Errorf("expected stack trace with file, got %s", bufOut)
+	}
+}
