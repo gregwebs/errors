@@ -30,13 +30,14 @@ func Errors(err error) []error {
 // The visitor function can return true to end the traversal early
 // In that case, WalkDeep will return true, otherwise false.
 func WalkDeep(err error, visitor func(err error) bool) bool {
-	// Go deep
-	unErr := err
-	for unErr != nil {
-		if done := visitor(unErr); done {
-			return true
-		}
-		unErr = Unwrap(unErr)
+	if err == nil {
+		return false
+	}
+	if done := visitor(err); done {
+		return true
+	}
+	if done := WalkDeep(Unwrap(err), visitor); done {
+		return true
 	}
 
 	// Go wide
