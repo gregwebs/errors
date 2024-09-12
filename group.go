@@ -25,10 +25,13 @@ func Errors(err error) []error {
 	return nil
 }
 
+// Deprecated: WalkDeep was created before iterators.
+// UnwrapGroups is now preferred for those using Go version >= 1.23.
+// Note that WalkDeep uses the opposite convention for boolean return values compared to golang iterators.
 // WalkDeep does a depth-first traversal of all errors.
-// Any ErrorGroup is traversed (after going deep).
+// Any ErrorGroup is traversed (after first unwrapping deeply).
 // The visitor function can return true to end the traversal early
-// In that case, WalkDeep will return true, otherwise false.
+// If iteration is ended early, WalkDeep will return true, otherwise false.
 func WalkDeep(err error, visitor func(err error) bool) bool {
 	if err == nil {
 		return false
