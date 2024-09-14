@@ -134,7 +134,7 @@ func SlogRecord(inputErr error) *slog.Record {
 	var msg string
 	var record *slog.Record
 	msgDone := false
-	WalkDeep(inputErr, func(err error) bool {
+	walkDeepStack(inputErr, func(err error, stack int) bool {
 		// Gather messages until we reach a message that does not understand ErrorNotUnwrapped, SlogMessager, or HasSlogRecord
 		if !msgDone {
 			var nextMsg string
@@ -159,17 +159,20 @@ func SlogRecord(inputErr error) *slog.Record {
 					record.AddAttrs(attr)
 					return true
 				})
+				if record.PC == 0 && newRecord.PC != 0 {
+					record.PC = newRecord.PC
+				}
 			}
 		} else if sloga, ok := err.(SlogAttributer); ok {
 			if record == nil {
-				record = toSlogRecord(sloga, 5)
+				record = toSlogRecord(sloga, 5+stack)
 			} else {
 				record.AddAttrs(sloga.SlogAttrs()...)
 			}
 		}
 
 		return false // keep going
-	})
+	}, 0)
 	if record != nil {
 		record.Message = msg
 	}

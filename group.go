@@ -54,3 +54,26 @@ func WalkDeep(err error, visitor func(err error) bool) bool {
 
 	return false
 }
+
+func walkDeepStack(err error, visitor func(error, int) bool, stack int) bool {
+	if err == nil {
+		return false
+	}
+	if done := visitor(err, stack); done {
+		return true
+	}
+	if done := walkDeepStack(Unwrap(err), visitor, stack+1); done {
+		return true
+	}
+
+	// Go wide
+	if errors := Errors(err); len(errors) > 0 {
+		for _, err := range errors {
+			if early := walkDeepStack(err, visitor, stack+1); early {
+				return true
+			}
+		}
+	}
+
+	return false
+}

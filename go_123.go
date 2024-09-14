@@ -2,7 +2,9 @@
 
 package errors
 
-import "iter"
+import (
+	"iter"
+)
 
 // UnwrapGroups will unwrap errors visiting each one.
 // Any ErrorGroup is expanded and traversed
@@ -15,3 +17,13 @@ func UnwrapGroups(err error) iter.Seq[error] {
 		})
 	}
 }
+
+/*
+func unwrapGroupsStack(err error) iter.Seq2[int, error] {
+	return func(yield func(int, error) bool) {
+		_ = walkDeepStack(err, func(e error, stack int) bool {
+			return !yield(stack, e)
+		}, 3)
+	}
+}
+*/
