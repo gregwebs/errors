@@ -366,3 +366,35 @@ func TestWalkDeep(t *testing.T) {
 		t.Errorf("found not exists")
 	}
 }
+
+type FindMe struct {
+	a int
+}
+
+func (fm FindMe) Error() string {
+	return "you found me!"
+}
+
+func TestAsType(t *testing.T) {
+	var err error
+	var errAs FindMe
+	var found bool
+	var errorValue = 1
+	err = FindMe{a: errorValue}
+	errAs, found = AsType[FindMe](err)
+	if !found || errAs.a != errorValue {
+		t.Errorf("dif not find error 0 levels deep")
+	}
+
+	err = Wrap(err, "wrapped up")
+	errAs, found = AsType[FindMe](err)
+	if !found || errAs.a != errorValue {
+		t.Errorf("did not find error 1 levels deep")
+	}
+
+	err = nilError{}
+	errAs, found = AsType[FindMe](err)
+	if found {
+		t.Errorf("should not have found a different error type")
+	}
+}
