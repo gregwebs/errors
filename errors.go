@@ -338,6 +338,16 @@ func As(err error, target any) bool {
 	return stderrors.As(err, target)
 }
 
+// AsType is equivalient to As and returns the same boolean.
+// Instead of instantiating a struct and passing it by pointer,
+// the type of the error is given as the generic argument
+// It is instantiated and returned.
+func AsType[Err error](err error) (Err, bool) {
+	var target Err
+	return target, stderrors.As(err, &target)
+}
+
+// HandleWriteError handles errors when writing to fmt.State
 var HandleWriteError = func(err error) {
 	log.Println(err)
 }
