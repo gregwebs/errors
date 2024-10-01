@@ -6,6 +6,7 @@ import (
 	"io"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -60,55 +61,56 @@ func (nilError) Error() string { return "nil error" }
 func TestCause(t *testing.T) {
 	x := New("error")
 	tests := []struct {
+		name string
 		err  error
 		want error
 	}{{
+		name: "all nil",
 		// nil error is nil
 		err:  nil,
 		want: nil,
 	}, {
-		// explicit nil error is nil
+		name: " explicit nil error is nil",
 		err:  (error)(nil),
 		want: nil,
 	}, {
-		// typed nil is nil
+		name: "typed nil is nil",
 		err:  (*nilError)(nil),
 		want: (*nilError)(nil),
 	}, {
-		// uncaused error is unaffected
+		name: "uncaused error is unaffected",
 		err:  io.EOF,
 		want: io.EOF,
 	}, {
-		// caused error returns cause
+		name: "caused error returns cause",
 		err:  Wrap(io.EOF, "ignored"),
 		want: io.EOF,
 	}, {
-		err:  x, // return from errors.New
+		name: "errors.New self",
+		err:  x,
 		want: x,
 	}, {
-		WithMessage(nil, "whoops"),
-		nil,
+		name: "nil With",
+		err:  WithMessage(nil, "whoops"),
+		want: nil,
 	}, {
-		WithMessage(io.EOF, "whoops"),
-		io.EOF,
+		name: "WithMessage",
+		err:  WithMessage(io.EOF, "whoops"),
+		want: io.EOF,
 	}, {
-		AddStack(nil),
-		nil,
+		name: "AddStack nil",
+		err:  AddStack(nil),
+		want: nil,
 	}, {
-		AddStack(io.EOF),
-		io.EOF,
-	}, {
-		AddStack(nil),
-		nil,
-	}, {
-		AddStack(io.EOF),
-		io.EOF,
+		name: "AddStack",
+		err:  AddStack(io.EOF),
+		want: io.EOF,
 	}}
 
-	for i, tt := range tests {
+	for _, tt := range tests {
 		got := Cause(tt.err)
 		if !reflect.DeepEqual(got, tt.want) {
-			t.Errorf("test %d: got %#v, want %#v", i+1, got, tt.want)
+			t.Errorf("test %s: got %#v, want %#v", tt.name, got, tt.want)
 		}
 	}
 }
@@ -396,5 +398,23 @@ func TestAsType(t *testing.T) {
 	errAs, found = AsType[FindMe](err)
 	if found {
 		t.Errorf("should not have found a different error type")
+	}
+}
+
+func TestFormatWrapped(t *testing.T) {
+	bottom := New("underlying")
+	wrapped := Wrap(bottom, "wrapped")
+	if fmt.Sprintf("%v", wrapped) != "wrapped: underlying" {
+		t.Errorf("Unexpected wrapping format: %v", wrapped)
+	}
+	if strings.HasPrefix(fmt.Sprintf("%+v", wrapped), "wrapped: underlying") {
+		t.Errorf("Unexpected wrapping format: %+v", wrapped)
+	}
+	unwrapped := Unwrap(wrapped)
+	if fmt.Sprintf("%v", unwrapped) != "underlying" {
+		t.Errorf("Unexpected unwrapping format: %v", wrapped)
+	}
+	if !strings.HasPrefix(fmt.Sprintf("%+v", unwrapped), "underlying") {
+		t.Errorf("Unexpected unwrapping format: %+v", wrapped)
 	}
 }
