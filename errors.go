@@ -153,7 +153,7 @@ func AddStack(err error) error {
 		return err
 	}
 
-	return &withStack{err, callers()}
+	return &addStack{withStack{err, callers()}}
 }
 
 // Same as AddStack but specify an additional number of callers to skip
@@ -164,7 +164,7 @@ func AddStackSkip(err error, skip int) error {
 	if HasStack(err) {
 		return err
 	}
-	return &withStack{err, callersSkip(skip + 3)}
+	return &addStack{withStack{err, callersSkip(skip + 3)}}
 }
 
 // GetStackTracer will return the first StackTracer in the causer chain.
@@ -188,14 +188,14 @@ type withStack struct {
 	*stack
 }
 
-func (w *withStack) Unwrap() error         { return w.error }
+func (w *withStack) Unwrap() error         { return Unwrap(w.error) }
 func (w *withStack) ErrorNoUnwrap() string { return "" }
 
 func (w *withStack) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			formatterPlusV(s, verb, w.Unwrap())
+			formatterPlusV(s, verb, w.error)
 			w.stack.Format(s, verb)
 			return
 		}
@@ -206,6 +206,14 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 		fmt.Fprintf(s, "%q", w.Error())
 	}
 }
+
+// addStack is returned directly whereas withStack is always used composed
+// they Unwrap differently
+type addStack struct {
+	withStack
+}
+
+func (w *addStack) Unwrap() error { return w.error }
 
 // Wrap returns an error annotating err with a stack trace
 // at the point Wrap is called, and the supplied message.
