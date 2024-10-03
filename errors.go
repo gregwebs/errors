@@ -383,3 +383,42 @@ func writeString(w io.Writer, s string) {
 type ErrorNotUnwrapped interface {
 	ErrorNoUnwrap() string
 }
+
+// The ErrorWrapper method allows for modifying the inner error while maintaining the same outer type.
+// This is useful for wrapping types that implement an interface that extend errors.
+type ErrorWrapper interface {
+	error
+	WrapError(func(error) error)
+}
+
+// ErrorWrap should be included as a pointer.
+// If fulfills the WrapError interface.
+// This allows for wrapping an inner error without changing the outer type.
+type ErrorWrap struct {
+	error
+}
+
+func (ew *ErrorWrap) Unwrap() error {
+	return Unwrap(ew.error)
+}
+
+func (ew *ErrorWrap) WrapError(wrap func(error) error) {
+	ew.error = wrap(ew.error)
+}
+
+var _ ErrorWrapper = (*ErrorWrap)(nil) // assert implements interface
+
+// WrapFn returns a wrapping function that calls Wrap
+func WrapFn(msg string) func(error) error {
+	return func(err error) error { return Wrap(err, msg) }
+}
+
+// WrapFn returns a wrapping function that calls Wrapf
+func WrapfFn(msg string, args ...interface{}) func(error) error {
+	return func(err error) error { return Wrapf(err, msg, args...) }
+}
+
+// WrapFn returns a wrapping function that calls Wraps
+func WrapsFn(msg string, args ...interface{}) func(error) error {
+	return func(err error) error { return Wraps(err, msg, args...) }
+}

@@ -418,3 +418,28 @@ func TestFormatWrapped(t *testing.T) {
 		t.Errorf("Unexpected unwrapping format: %+v", wrapped)
 	}
 }
+
+type WrapInPlace struct {
+	*ErrorWrap
+}
+
+func TestErrorWrapper(t *testing.T) {
+	err := WrapInPlace{&ErrorWrap{error: New("underlying")}}
+	if err.Error() != "underlying" {
+		t.Errorf("Error()")
+	}
+	err.WrapError(WrapFn("wrap"))
+	if err.Error() != "wrap: underlying" {
+		t.Errorf("wrap Error()")
+	}
+
+	err.WrapError(WrapfFn("wrapf %d", 1))
+	if s := err.Error(); s != "wrapf 1: wrap: underlying" {
+		t.Errorf("wrapf Error() %s", s)
+	}
+
+	err.WrapError(WrapsFn("wraps", "i", 2))
+	if s := err.Error(); s != "wraps i=2: wrapf 1: wrap: underlying" {
+		t.Errorf("wrapf Error() %s", s)
+	}
+}
