@@ -395,15 +395,19 @@ type ErrorWrapper interface {
 // If fulfills the WrapError interface.
 // This allows for wrapping an inner error without changing the outer type.
 type ErrorWrap struct {
-	error
+	Err error
+}
+
+func (ew *ErrorWrap) Error() string {
+	return ew.Err.Error()
 }
 
 func (ew *ErrorWrap) Unwrap() error {
-	return Unwrap(ew.error)
+	return Unwrap(ew.Err)
 }
 
 func (ew *ErrorWrap) WrapError(wrap func(error) error) {
-	ew.error = wrap(ew.error)
+	ew.Err = wrap(ew.Err)
 }
 
 var _ ErrorWrapper = (*ErrorWrap)(nil) // assert implements interface

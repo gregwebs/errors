@@ -424,7 +424,7 @@ type WrapInPlace struct {
 }
 
 func TestErrorWrapper(t *testing.T) {
-	err := WrapInPlace{&ErrorWrap{error: New("underlying")}}
+	err := WrapInPlace{&ErrorWrap{Err: New("underlying")}}
 	if err.Error() != "underlying" {
 		t.Errorf("Error()")
 	}
