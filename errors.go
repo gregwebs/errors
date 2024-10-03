@@ -391,6 +391,20 @@ type ErrorWrapper interface {
 	WrapError(func(error) error)
 }
 
+// Uses ErrorWrapper to wrap in place, if ErrorWrapper is available.
+// Returns true if wrapped in place.
+// Returns false if not wrapped in place, including if the given error is nil.
+func WrapInPlace(err error, wrap func(error) error) bool {
+	if err == nil {
+		return false
+	}
+	if inPlace, ok := AsType[ErrorWrapper](err); ok {
+		inPlace.WrapError(wrap)
+		return true
+	}
+	return false
+}
+
 // ErrorWrap should be included as a pointer.
 // If fulfills the WrapError interface.
 // This allows for wrapping an inner error without changing the outer type.

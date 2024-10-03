@@ -419,12 +419,12 @@ func TestFormatWrapped(t *testing.T) {
 	}
 }
 
-type WrapInPlace struct {
+type WrappedInPlace struct {
 	*ErrorWrap
 }
 
 func TestErrorWrapper(t *testing.T) {
-	err := WrapInPlace{&ErrorWrap{Err: New("underlying")}}
+	err := WrappedInPlace{&ErrorWrap{Err: New("underlying")}}
 	if err.Error() != "underlying" {
 		t.Errorf("Error()")
 	}
