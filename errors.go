@@ -402,8 +402,9 @@ func (ew *ErrorWrap) Error() string {
 	return ew.Err.Error()
 }
 
+// This struct is designed to be used as an embeded error.
 func (ew *ErrorWrap) Unwrap() error {
-	return Unwrap(ew.Err)
+	return ew.Err
 }
 
 func (ew *ErrorWrap) WrapError(wrap func(error) error) {
