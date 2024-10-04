@@ -98,7 +98,7 @@ func Wraps(err error, msg string, args ...interface{}) StructuredError {
 	runtime.Callers(2, pcs[:])
 	pc = pcs[0]
 
-	record := slog.NewRecord(time.Now(), slog.LevelError, joinZero(": ", msg, err.Error()), pc)
+	record := slog.NewRecord(time.Now(), slog.LevelError, msg, pc)
 	// support passing an array of Attr: otherwise would require a cast
 	for loop := true; loop && len(args) > 0; {
 		switch attrs := any(args[0]).(type) {
@@ -138,41 +138,6 @@ func SlogRecord(inputErr error) *slog.Record {
 	msgDone := false
 	var msgUnrecognized string
 	walkDeepStack(inputErr, func(err error, stack int) bool {
-		// Gather messages until we reach a message that does not understand ErrorNotUnwrapped, SlogMessager, or HasSlogRecord
-		if !msgDone {
-			if slogMsg := slogMsg(err); slogMsg != "" {
-				if slogMsg != "" {
-					if msgUnrecognized == "" || strings.HasPrefix(msgUnrecognized, slogMsg) {
-						msgs = append(msgs, slogMsg)
-						msgUnrecognized = ""
-					}
-				}
-				if msgUnrecognized != "" {
-					msgs = append(msgs, msgUnrecognized)
-					msgDone = true
-				}
-			} else if noUnwrap, ok := err.(ErrorNotUnwrapped); ok {
-				if msg := noUnwrap.ErrorNoUnwrap(); msg != "" {
-					if msgUnrecognized == "" || strings.HasPrefix(msgUnrecognized, msg) {
-						msgs = append(msgs, msg)
-						msgUnrecognized = ""
-					}
-				}
-				if msgUnrecognized != "" {
-					msgs = append(msgs, msgUnrecognized)
-					msgDone = true
-				}
-			} else {
-				newErrMsg := err.Error()
-				if msgUnrecognized == "" {
-					msgUnrecognized = newErrMsg
-				} else if msgUnrecognized != newErrMsg {
-					msgs = append(msgs, msgUnrecognized)
-					msgDone = true
-				}
-			}
-		}
-
 		if hr, ok := err.(HasSlogRecord); ok {
 			newRecord := hr.GetSlogRecord()
 			if record == nil {
@@ -187,7 +152,7 @@ func SlogRecord(inputErr error) *slog.Record {
 					record.PC = newRecord.PC
 				}
 			}
-		} else if sloga, ok := err.(SlogAttributer); ok {
+		} else if sloga, ok := err.(attributeError); ok {
 			if record == nil {
 				record = toSlogRecord(sloga, 5+stack)
 			} else {
@@ -195,8 +160,47 @@ func SlogRecord(inputErr error) *slog.Record {
 			}
 		}
 
+		// Gather messages until we reach a message that does not understand ErrorNotUnwrapped, SlogMessager, or HasSlogRecord
+		if !msgDone {
+			// We are recursing down and the error is still the same
+			// This was just a simple wrapper
+			newErrMsg := err.Error()
+			if msgUnrecognized != "" && newErrMsg == msgUnrecognized {
+				msgUnrecognized = ""
+			}
+			if slogMsg := slogMsg(err); slogMsg != nil {
+				if *slogMsg != "" {
+					if msgUnrecognized == "" || strings.HasPrefix(msgUnrecognized, *slogMsg) {
+						msgs = append(msgs, *slogMsg)
+						msgUnrecognized = ""
+					}
+				}
+			} else if noUnwrap, ok := err.(ErrorNotUnwrapped); ok {
+				if msg := noUnwrap.ErrorNoUnwrap(); msg != "" {
+					if msgUnrecognized == "" || strings.HasPrefix(msgUnrecognized, msg) {
+						msgs = append(msgs, msg)
+						msgUnrecognized = ""
+					}
+				}
+				if msgUnrecognized != "" {
+					msgs = append(msgs, msgUnrecognized)
+					msgDone = true
+				}
+			} else {
+				if msgUnrecognized == "" {
+					if len(msgs) > 0 && newErrMsg != msgs[len(msgs)-1] {
+						msgUnrecognized = newErrMsg
+					}
+				} else if msgUnrecognized != newErrMsg {
+					msgs = append(msgs, msgUnrecognized)
+					msgDone = true
+				}
+			}
+		}
+
 		return false // keep going
 	}, 0)
+
 	if record != nil {
 		if !msgDone && msgUnrecognized != "" {
 			msgs = append(msgs, msgUnrecognized)
@@ -225,13 +229,15 @@ func SlogTextBuffer(opts *slog.HandlerOptions) (slog.Handler, func() string) {
 
 // slogMsg returns a message from a SlogMessager or a HasSlogRecord.
 // Otherwise it returns an empty string
-func slogMsg(err any) string {
+func slogMsg(err any) *string {
 	if slogm, ok := err.(SlogMessager); ok {
-		return slogm.SlogMsg()
+		s := slogm.SlogMsg()
+		return &s
 	} else if hr, ok := err.(HasSlogRecord); ok {
-		return hr.GetSlogRecord().Message
+		s := hr.GetSlogRecord().Message
+		return &s
 	} else {
-		return ""
+		return nil
 	}
 }
 
@@ -255,7 +261,12 @@ func slogAttributes(err any) []slog.Attr {
 }
 */
 
-func toSlogRecord(err SlogAttributer, skip int) *slog.Record {
+type attributeError interface {
+	SlogAttributer
+	error
+}
+
+func toSlogRecord(err attributeError, skip int) *slog.Record {
 	if skip <= 0 {
 		skip = 2
 	}
@@ -263,7 +274,13 @@ func toSlogRecord(err SlogAttributer, skip int) *slog.Record {
 	var pcs [1]uintptr
 	runtime.Callers(skip, pcs[:])
 	pc = pcs[0]
-	record := slog.NewRecord(time.Now(), slog.LevelError, slogMsg(err), pc)
+	var msg string
+	if sm := slogMsg(err); sm != nil {
+		msg = *sm
+	} else {
+		msg = err.Error()
+	}
+	record := slog.NewRecord(time.Now(), slog.LevelError, msg, pc)
 	record.AddAttrs(err.SlogAttrs()...)
 	return &record
 }
@@ -301,7 +318,7 @@ func structureAsText(record slog.Record) string {
 	return str[:len(str)-1]
 }
 
-func textFromRecord(err SlogAttributer) string {
+func textFromRecord(err attributeError) string {
 	record := toSlogRecord(err, 0)
 	if record == nil {
 		return ""
