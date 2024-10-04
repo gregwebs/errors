@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -47,19 +48,20 @@ func (se structuredErr) GetSlogRecord() slog.Record {
 }
 
 func (se structuredErr) Error() string {
-	msg := se.msg
-
-	stext := structureAsText(se.Record)
-	if stext != "" {
-		msg = joinZero(" ", msg, stext)
-	}
-
-	return joinZero(": ", msg, se.err.Error())
+	return joinZero(": ", se.ErrorNoUnwrap(), se.err.Error())
 }
 
 func (se structuredErr) Unwrap() error   { return se.err }
 func (se structuredErr) SlogMsg() string { return se.msg }
 func (se structuredErr) HasStack() bool  { return true }
+func (se structuredErr) ErrorNoUnwrap() string {
+	msg := se.msg
+	stext := structureAsText(se.Record)
+	if stext != "" {
+		msg = joinZero(" ", msg, stext)
+	}
+	return msg
+}
 
 func (se structuredErr) Format(s fmt.State, verb rune) {
 	switch verb {
@@ -131,22 +133,38 @@ func Wraps(err error, msg string, args ...interface{}) StructuredError {
 //		}
 //	}
 func SlogRecord(inputErr error) *slog.Record {
-	var msg string
+	msgs := []string{}
 	var record *slog.Record
 	msgDone := false
+	var msgUnrecognized string
 	walkDeepStack(inputErr, func(err error, stack int) bool {
 		// Gather messages until we reach a message that does not understand ErrorNotUnwrapped, SlogMessager, or HasSlogRecord
 		if !msgDone {
-			var nextMsg string
 			if slogMsg := slogMsg(err); slogMsg != "" {
-				nextMsg = slogMsg
+				if msgUnrecognized != "" {
+					msgs = append(msgs, msgUnrecognized)
+					msgDone = true
+				} else if slogMsg != "" {
+					msgs = append(msgs, slogMsg)
+				}
 			} else if noUnwrap, ok := err.(ErrorNotUnwrapped); ok {
-				nextMsg = noUnwrap.ErrorNoUnwrap()
+				if msgUnrecognized != "" {
+					msgs = append(msgs, msgUnrecognized)
+					msgDone = true
+				} else {
+					if msg := noUnwrap.ErrorNoUnwrap(); msg != "" {
+						msgs = append(msgs, msg)
+					}
+				}
 			} else {
-				msgDone = true
-				nextMsg = err.Error()
+				newErrMsg := err.Error()
+				if msgUnrecognized == "" {
+					msgUnrecognized = newErrMsg
+				} else if msgUnrecognized != newErrMsg {
+					msgs = append(msgs, msgUnrecognized)
+					msgDone = true
+				}
 			}
-			msg = joinZero(": ", msg, nextMsg)
 		}
 
 		if hr, ok := err.(HasSlogRecord); ok {
@@ -174,7 +192,10 @@ func SlogRecord(inputErr error) *slog.Record {
 		return false // keep going
 	}, 0)
 	if record != nil {
-		record.Message = msg
+		if !msgDone && msgUnrecognized != "" {
+			msgs = append(msgs, msgUnrecognized)
+		}
+		record.Message = strings.Join(msgs, ": ")
 	}
 	return record
 }
@@ -279,5 +300,5 @@ func textFromRecord(err SlogAttributer) string {
 	if record == nil {
 		return ""
 	}
-	return structureAsText(*record)
+	return joinZero(" ", record.Message, structureAsText(*record))
 }

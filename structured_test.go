@@ -48,6 +48,12 @@ func TestStructured(t *testing.T) {
 	if numAttrs := record.NumAttrs(); numAttrs != 4 {
 		t.Errorf("expected 4 attributes, got %d for %s", numAttrs, err.Error())
 	}
+	if record.Message != "structured2: cause1" {
+		t.Errorf("unexpected record message: %s", record.Message)
+	}
+	if err.Error() != "structured2 key=value int=3: cause1 key=value int=1" {
+		t.Errorf("unexpected Error: %s", err.Error())
+	}
 
 	// Test stack trace
 	hOpts := slog.HandlerOptions{
@@ -82,6 +88,12 @@ func TestStructuredWrap(t *testing.T) {
 	record := SlogRecord(err)
 	if numAttrs := record.NumAttrs(); numAttrs != 4 {
 		t.Errorf("expected 4 attributes, got %d for %s", numAttrs, err.Error())
+	}
+	if record.Message != "structured2: structured1: cause1" {
+		t.Errorf("unexpected record message: %s", record.Message)
+	}
+	if err.Error() != "structured2 key=value int=3: structured1 key=value int=1: cause1" {
+		t.Errorf("unexpected Error: %s", err.Error())
 	}
 
 	// Test stack trace
@@ -124,7 +136,11 @@ func (sa slogAttrs) Unwrap() error {
 }
 
 func (sa slogAttrs) Error() string {
-	return textFromRecord(sa)
+	var inner string
+	if sa.inner != nil {
+		inner = sa.inner.Error()
+	}
+	return joinZero(": ", textFromRecord(sa), inner)
 }
 
 func (sa slogAttrs) SlogMsg() string {
@@ -153,6 +169,12 @@ func TestStructuredAttrsInner(t *testing.T) {
 	if numAttrs := record.NumAttrs(); numAttrs != 4 {
 		t.Errorf("expected 4 attributes, got %d for %s", numAttrs, err.Error())
 	}
+	if record.Message != "structured2: cause1" {
+		t.Errorf("unexpected record message: %s", record.Message)
+	}
+	if err.Error() != "structured2 key=value int=3: cause1 key=value int=1" {
+		t.Errorf("unexpected Error: %s", err.Error())
+	}
 
 	// Test stack trace
 	hOpts := slog.HandlerOptions{
@@ -177,6 +199,12 @@ func TestStructuredAttrsOuter(t *testing.T) {
 	record := SlogRecord(err)
 	if numAttrs := record.NumAttrs(); numAttrs != 4 {
 		t.Errorf("expected 4 attributes, got %d for %s", numAttrs, err.Error())
+	}
+	if record.Message != "cause1: structured2" {
+		t.Errorf("unexpected record message: %s", record.Message)
+	}
+	if err.Error() != "cause1 key=value int=1: structured2 key=value int=3" {
+		t.Errorf("unexpected Error: %s", err.Error())
 	}
 
 	// Test stack trace
