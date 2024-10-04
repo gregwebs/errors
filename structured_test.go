@@ -68,6 +68,14 @@ func TestStructured(t *testing.T) {
 	}
 }
 
+type container struct {
+	error
+}
+
+func (c container) Unwrap() error {
+	return c.error
+}
+
 func TestStructuredWrap(t *testing.T) {
 	errInner := Wraps(
 		New("cause1"),
@@ -75,14 +83,14 @@ func TestStructuredWrap(t *testing.T) {
 		"key", "value",
 		"int", 1,
 	)
-	err := Wraps(
+	err := container{Wraps(
 		errInner,
 		"structured2",
 		"key", "value",
 		"int", 3,
-	)
+	)}
 
-	if numAttrs := err.GetSlogRecord().NumAttrs(); numAttrs != 2 {
+	if numAttrs := errInner.GetSlogRecord().NumAttrs(); numAttrs != 2 {
 		t.Errorf("expected 2 attributes, got %d for %s", numAttrs, err.Error())
 	}
 	record := SlogRecord(err)
@@ -195,7 +203,7 @@ func TestStructuredAttrsOuter(t *testing.T) {
 		"key", "value",
 		"int", 3,
 	)
-	err := slogAttrs{inner: errInner}
+	err := container{slogAttrs{inner: errInner}}
 	record := SlogRecord(err)
 	if numAttrs := record.NumAttrs(); numAttrs != 4 {
 		t.Errorf("expected 4 attributes, got %d for %s", numAttrs, err.Error())

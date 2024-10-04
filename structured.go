@@ -141,20 +141,26 @@ func SlogRecord(inputErr error) *slog.Record {
 		// Gather messages until we reach a message that does not understand ErrorNotUnwrapped, SlogMessager, or HasSlogRecord
 		if !msgDone {
 			if slogMsg := slogMsg(err); slogMsg != "" {
+				if slogMsg != "" {
+					if msgUnrecognized == "" || strings.HasPrefix(msgUnrecognized, slogMsg) {
+						msgs = append(msgs, slogMsg)
+						msgUnrecognized = ""
+					}
+				}
 				if msgUnrecognized != "" {
 					msgs = append(msgs, msgUnrecognized)
 					msgDone = true
-				} else if slogMsg != "" {
-					msgs = append(msgs, slogMsg)
 				}
 			} else if noUnwrap, ok := err.(ErrorNotUnwrapped); ok {
+				if msg := noUnwrap.ErrorNoUnwrap(); msg != "" {
+					if msgUnrecognized == "" || strings.HasPrefix(msgUnrecognized, msg) {
+						msgs = append(msgs, msg)
+						msgUnrecognized = ""
+					}
+				}
 				if msgUnrecognized != "" {
 					msgs = append(msgs, msgUnrecognized)
 					msgDone = true
-				} else {
-					if msg := noUnwrap.ErrorNoUnwrap(); msg != "" {
-						msgs = append(msgs, msg)
-					}
 				}
 			} else {
 				newErrMsg := err.Error()
