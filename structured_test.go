@@ -228,3 +228,22 @@ func TestStructuredAttrsOuter(t *testing.T) {
 		t.Errorf("expected stack trace with file, got %s", bufOut)
 	}
 }
+
+func TestStructuredWrapping(t *testing.T) {
+	errInner := Slog("structured2", "k", "v")
+	wrapped := Wraps(errInner, "", "outer", 1)
+	expectedErrorMsg := "outer=1: structured2 k=v"
+	if wrapped.Error() != expectedErrorMsg {
+		t.Errorf("Unexpected Error(): %s", wrapped.Error())
+	}
+
+	record := SlogRecord(wrapped)
+	if record == nil {
+		t.Errorf("no SlogRecord")
+	} else {
+		text := joinZero(" ", record.Message, structureAsText(*record))
+		if text != "structured2 outer=1 k=v" {
+			t.Errorf("Unexpected text: %s", text)
+		}
+	}
+}
