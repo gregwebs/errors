@@ -1,5 +1,32 @@
 package errors
 
+import stderrors "errors"
+
+// The same as the standard errors.Join
+func Join(errs ...error) error {
+	return stderrors.Join(errs...)
+}
+
+// The same as errors.Join but does not wrap the array in an error
+func Joins(errs ...error) []error {
+	n := 0
+	for _, err := range errs {
+		if err != nil {
+			n++
+		}
+	}
+	if n == 0 {
+		return nil
+	}
+	newErrs := make([]error, 0, n)
+	for _, err := range errs {
+		if err != nil {
+			newErrs = append(newErrs, err)
+		}
+	}
+	return newErrs
+}
+
 // ErrorGroup is an interface for multiple errors that are not a chain.
 // This happens for example when executing multiple operations in parallel.
 // Also can now define Unwraps() []error
