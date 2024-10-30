@@ -87,21 +87,28 @@ import (
 // New returns an error with the supplied message.
 // New also records the stack trace at the point it was called.
 func New(message string) error {
-	return &fundamental{
-		msg:   message,
-		stack: callers(),
-	}
+	return &fundamental{withStack{
+		stderrors.New(message),
+		callers(),
+	}}
 }
 
 // Errorf formats according to a format specifier and returns the string
 // as a value that satisfies error.
 // Errorf also records the stack trace at the point it was called.
 func Errorf(format string, args ...interface{}) error {
-	// Use withStack instead of fundamental to support %w wrapping with fmt.Errorf
-	return &withStack{
-		error: fmt.Errorf(format, args...),
+	err := fmt.Errorf(format, args...)
+	stacked := withStack{
+		error: err,
 		stack: callers(),
 	}
+	// if %w was successfully used then this is not a fundamental error
+	if _, ok := err.(unwrapper); ok {
+		return &addStack{stacked}
+	} else if _, ok := err.(unwraps); ok {
+		return &addStack{stacked}
+	}
+	return &fundamental{stacked}
 }
 
 // StackTraceAware is an optimization to avoid repetitive traversals of an error chain.
@@ -119,29 +126,16 @@ func HasStack(err error) bool {
 	return GetStackTracer(err) != nil
 }
 
-// fundamental is an error that has a message and a stack, but no caller.
+// fundamental is a base error that doesn't wrap other errors
+// originally it stored just a string, but switching to storing an error allows for
+// * simple re-use of withStack
+// * usage of Errorf to support any formatting
+// The latter is done to support %w, but if %w is used we don't use fundamental
 type fundamental struct {
-	msg string
-	*stack
+	withStack
 }
 
-func (f *fundamental) Error() string { return f.msg }
-
-func (f *fundamental) Format(s fmt.State, verb rune) {
-	switch verb {
-	case 'v':
-		if s.Flag('+') {
-			writeString(s, f.msg)
-			f.stack.Format(s, verb)
-			return
-		}
-		fallthrough
-	case 's':
-		writeString(s, f.msg)
-	case 'q':
-		fmt.Fprintf(s, "%q", f.msg)
-	}
-}
+func (f *fundamental) ErrorNoUnwrap() string { return f.Error() }
 
 // AddStack annotates err with a stack trace at the point WithStack was called.
 // It will first check with HasStack to see if a stack trace already exists before creating another one.
@@ -188,8 +182,7 @@ type withStack struct {
 	*stack
 }
 
-func (w *withStack) Unwrap() error         { return Unwrap(w.error) }
-func (w *withStack) ErrorNoUnwrap() string { return "" }
+func (w *withStack) Unwrap() error { return Unwrap(w.error) }
 
 func (w *withStack) Format(s fmt.State, verb rune) {
 	switch verb {
@@ -307,12 +300,14 @@ func Cause(err error) error {
 	return Cause(cause)
 }
 
+type unwrapper interface {
+	Unwrap() error
+}
+
 // Unwrap uses the Unwrap method to return the next error in the chain or nil.
 // This is the same as the standard errors.Unwrap
 func Unwrap(err error) error {
-	u, ok := err.(interface {
-		Unwrap() error
-	})
+	u, ok := err.(unwrapper)
 	if !ok {
 		return nil
 	}

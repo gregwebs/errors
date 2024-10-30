@@ -162,15 +162,17 @@ func SlogRecord(inputErr error) *slog.Record {
 
 		// Gather messages until we reach a message that does not understand ErrorNotUnwrapped, SlogMessager, or HasSlogRecord
 		if !msgDone {
+			newErrMsg := err.Error()
+
 			// We are recursing down and the error is still the same
 			// This was just a simple wrapper
-			newErrMsg := err.Error()
-			if msgUnrecognized != "" && newErrMsg == msgUnrecognized {
+			if msgUnrecognized != "" && strings.HasPrefix(newErrMsg, msgUnrecognized) {
 				msgUnrecognized = ""
 			}
+
 			if slogMsg := slogMsg(err); slogMsg != nil {
 				if *slogMsg != "" {
-					if msgUnrecognized == "" || strings.HasPrefix(msgUnrecognized, *slogMsg) {
+					if msgUnrecognized == "" || strings.HasPrefix(*slogMsg, msgUnrecognized) {
 						msgs = append(msgs, *slogMsg)
 						msgUnrecognized = ""
 					}
@@ -182,19 +184,13 @@ func SlogRecord(inputErr error) *slog.Record {
 						msgUnrecognized = ""
 					}
 				}
-				if msgUnrecognized != "" {
-					msgs = append(msgs, msgUnrecognized)
-					msgDone = true
+			} else if msgUnrecognized == "" {
+				if len(msgs) > 0 && newErrMsg != msgs[len(msgs)-1] {
+					msgUnrecognized = newErrMsg
 				}
 			} else {
-				if msgUnrecognized == "" {
-					if len(msgs) > 0 && newErrMsg != msgs[len(msgs)-1] {
-						msgUnrecognized = newErrMsg
-					}
-				} else if msgUnrecognized != newErrMsg {
-					msgs = append(msgs, msgUnrecognized)
-					msgDone = true
-				}
+				msgs = append(msgs, msgUnrecognized)
+				msgDone = true
 			}
 		}
 
