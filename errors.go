@@ -222,14 +222,12 @@ func Wrap(err error, message string) error {
 	if err == nil {
 		return nil
 	}
-	hasStack := HasStack(err)
-	err = &withMessage{
-		cause:         err,
-		msg:           message,
-		causeHasStack: hasStack,
-	}
 	return &withStack{
-		err,
+		&withMessage{
+			cause:         err,
+			msg:           message,
+			causeHasStack: HasStack(err),
+		},
 		callers(),
 	}
 }
@@ -241,15 +239,14 @@ func Wrapf(err error, format string, args ...interface{}) error {
 	if err == nil {
 		return nil
 	}
-
-	hasStack := HasStack(err)
-	err = &withMessage{
-		cause:         err,
-		msg:           fmt.Sprintf(format, args...),
-		causeHasStack: hasStack,
+	return &withStack{
+		&withMessage{
+			cause:         err,
+			msg:           fmt.Sprintf(format, args...),
+			causeHasStack: HasStack(err),
+		},
+		callers(),
 	}
-
-	return &withStack{err, callers()}
 }
 
 // WithMessage annotates err with a new message.
