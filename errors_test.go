@@ -134,7 +134,7 @@ func TestWrapf(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := Wrapf(tt.err, tt.message).Error()
+		got := Wrap(tt.err, tt.message).Error()
 		if got != tt.want {
 			t.Errorf("Wrapf(%v, %q): got: %v, want %v", tt.err, tt.message, got, tt.want)
 		}
@@ -411,8 +411,9 @@ func TestFormatWrapped(t *testing.T) {
 		t.Errorf("Unexpected wrapping format: %+v", wrapped)
 	}
 	unwrapped := Unwrap(wrapped)
-	if fmt.Sprintf("%v", unwrapped) != "underlying" {
-		t.Errorf("Unexpected unwrapping format: %v", wrapped)
+	got := fmt.Sprintf("%v", unwrapped)
+	if got != "underlying" {
+		t.Errorf("Unexpected unwrapping format, got: %s, wrapped: %v", got, wrapped)
 	}
 	if !strings.HasPrefix(fmt.Sprintf("%+v", unwrapped), "underlying") {
 		t.Errorf("Unexpected unwrapping format: %+v", wrapped)
