@@ -188,6 +188,9 @@ func TestStackTrace(t *testing.T) {
 	}}
 	for i, tt := range tests {
 		ste := GetStackTracer(tt.err)
+		if ste == nil {
+			t.Fatalf("expected a stack trace from test %d error: %v", i+1, tt.err)
+		}
 		st := ste.StackTrace()
 		for j, want := range tt.want {
 			testFormatRegexp(t, i, st[j], "%+v", want)
@@ -247,19 +250,19 @@ func TestStackTraceFormat(t *testing.T) {
 	}, {
 		stackTrace()[:2],
 		"%v",
-		`[stack_test.go:201 stack_test.go:248]`,
+		`[stack_test.go:204 stack_test.go:251]`,
 	}, {
 		stackTrace()[:2],
 		"%+v",
 		"\n" +
 			"github.com/gregwebs/errors.stackTrace\n" +
-			"\tgithub.com/gregwebs/errors/stack_test.go:201\n" +
+			"\tgithub.com/gregwebs/errors/stack_test.go:204\n" +
 			"github.com/gregwebs/errors.TestStackTraceFormat\n" +
-			"\tgithub.com/gregwebs/errors/stack_test.go:252",
+			"\tgithub.com/gregwebs/errors/stack_test.go:255",
 	}, {
 		stackTrace()[:2],
 		"%#v",
-		`[]errors.Frame{stack_test.go:201, stack_test.go:260}`,
+		`[]errors.Frame{stack_test.go:204, stack_test.go:263}`,
 	}}
 
 	for i, tt := range tests {

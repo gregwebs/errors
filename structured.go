@@ -177,7 +177,7 @@ func SlogRecord(inputErr error) *slog.Record {
 						msgUnrecognized = ""
 					}
 				}
-			} else if noUnwrap, ok := err.(ErrorNotUnwrapped); ok {
+			} else if noUnwrap, ok := err.(ErrorUnwrap); ok {
 				if msg := noUnwrap.ErrorNoUnwrap(); msg != "" {
 					if msgUnrecognized == "" || strings.HasPrefix(msgUnrecognized, msg) {
 						msgs = append(msgs, msg)

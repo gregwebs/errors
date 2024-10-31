@@ -87,10 +87,7 @@ import (
 // New returns an error with the supplied message.
 // New also records the stack trace at the point it was called.
 func New(message string) error {
-	return &fundamental{withStack{
-		stderrors.New(message),
-		callers(),
-	}}
+	return &fundamental{stderrors.New(message), callers()}
 }
 
 // Errorf formats according to a format specifier and returns the string
@@ -98,17 +95,40 @@ func New(message string) error {
 // Errorf also records the stack trace at the point it was called.
 func Errorf(format string, args ...interface{}) error {
 	err := fmt.Errorf(format, args...)
-	stacked := withStack{
-		error: err,
-		stack: callers(),
-	}
-	// if %w was successfully used then this is not a fundamental error
 	if _, ok := err.(unwrapper); ok {
-		return &addStack{stacked}
+		return &addStack{withStack{err, callers()}}
 	} else if _, ok := err.(unwraps); ok {
-		return &addStack{stacked}
+		return &addStack{withStack{err, callers()}}
 	}
-	return &fundamental{stacked}
+	return &fundamental{err, callers()}
+}
+
+// fundamental is a base error that doesn't wrap other errors
+// It stores an error rather than just a string. This allows for:
+// * reuse of existing patterns
+// * usage of Errorf to support any formatting
+// The latter is done in part to support %w, but note that if %w is used we don't use fundamental
+type fundamental struct {
+	error
+	*stack
+}
+
+func (f *fundamental) StackTrace() StackTrace { return f.stack.StackTrace() }
+func (f *fundamental) HasStack() bool         { return true }
+func (f *fundamental) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if s.Flag('+') {
+			writeString(s, f.Error())
+			f.StackTrace().Format(s, verb)
+			return
+		}
+		fallthrough
+	case 's':
+		writeString(s, f.Error())
+	case 'q':
+		fmt.Fprintf(s, "%q", f.Error())
+	}
 }
 
 // StackTraceAware is an optimization to avoid repetitive traversals of an error chain.
@@ -126,17 +146,6 @@ func HasStack(err error) bool {
 	return GetStackTracer(err) != nil
 }
 
-// fundamental is a base error that doesn't wrap other errors
-// originally it stored just a string, but switching to storing an error allows for
-// * simple re-use of withStack
-// * usage of Errorf to support any formatting
-// The latter is done to support %w, but if %w is used we don't use fundamental
-type fundamental struct {
-	withStack
-}
-
-func (f *fundamental) ErrorNoUnwrap() string { return f.Error() }
-
 // AddStack annotates err with a stack trace at the point WithStack was called.
 // It will first check with HasStack to see if a stack trace already exists before creating another one.
 func AddStack(err error) error {
@@ -146,7 +155,6 @@ func AddStack(err error) error {
 	if HasStack(err) {
 		return err
 	}
-
 	return &addStack{withStack{err, callers()}}
 }
 
@@ -161,42 +169,37 @@ func AddStackSkip(err error, skip int) error {
 	return &addStack{withStack{err, callersSkip(skip + 3)}}
 }
 
-// GetStackTracer will return the first StackTracer in the causer chain.
-// This function is used by AddStack to avoid creating redundant stack traces.
-//
-// You can also use the StackTracer interface on the returned error to get the stack trace.
-func GetStackTracer(origErr error) StackTracer {
-	var stacked StackTracer
-	WalkDeep(origErr, func(err error) bool {
-		if stackTracer, ok := err.(StackTracer); ok {
-			stacked = stackTracer
-			return true
-		}
-		return false
-	})
-	return stacked
-}
-
 type withStack struct {
 	error
 	*stack
 }
 
-func (w *withStack) Unwrap() error { return Unwrap(w.error) }
-
+func (w *withStack) StackTrace() StackTrace { return w.stack.StackTrace() }
+func (w *withStack) Unwrap() error          { return w.error }
+func (w *withStack) ErrorNoUnwrap() string  { return "" }
+func (w *withStack) HasStack() bool         { return true }
 func (w *withStack) Format(s fmt.State, verb rune) {
+	formatError(w, s, verb)
+}
+
+func formatError(err ErrorUnwrap, s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			formatterPlusV(s, verb, w.error)
-			w.stack.Format(s, verb)
+			formatterPlusV(s, verb, err.Unwrap())
+			if msg := err.ErrorNoUnwrap(); msg != "" {
+				writeString(s, "\n"+msg)
+			}
+			if stackTracer, ok := err.(StackTracer); ok {
+				stackTracer.StackTrace().Format(s, verb)
+			}
 			return
 		}
 		fallthrough
 	case 's':
-		writeString(s, w.Error())
+		writeString(s, err.Error())
 	case 'q':
-		fmt.Fprintf(s, "%q", w.Error())
+		fmt.Fprintf(s, "%q", err.Error())
 	}
 }
 
@@ -206,7 +209,10 @@ type addStack struct {
 	withStack
 }
 
-func (w *addStack) Unwrap() error { return w.error }
+func (a *addStack) Unwrap() error { return a.error }
+func (a *addStack) Format(s fmt.State, verb rune) {
+	formatError(a, s, verb)
+}
 
 // Wrap returns an error annotating err with a stack trace
 // at the point Wrap is called, and the supplied message.
@@ -215,13 +221,9 @@ func Wrap(err error, message string) error {
 	if err == nil {
 		return nil
 	}
-	return &withStack{
-		&withMessage{
-			cause:         err,
-			msg:           message,
-			causeHasStack: HasStack(err),
-		},
-		callers(),
+	return &withMessage{
+		msg:       message,
+		withStack: withStack{err, callers()},
 	}
 }
 
@@ -232,13 +234,9 @@ func Wrapf(err error, format string, args ...interface{}) error {
 	if err == nil {
 		return nil
 	}
-	return &withStack{
-		&withMessage{
-			cause:         err,
-			msg:           fmt.Sprintf(format, args...),
-			causeHasStack: HasStack(err),
-		},
-		callers(),
+	return &withMessage{
+		msg:       fmt.Sprintf(format, args...),
+		withStack: withStack{err, callers()},
 	}
 }
 
@@ -249,43 +247,40 @@ func WithMessage(err error, message string) error {
 	if err == nil {
 		return nil
 	}
-	return &withMessage{
-		cause:         err,
-		msg:           message,
-		causeHasStack: HasStack(err),
+	return &withMessageNoStack{
+		msg:   message,
+		error: err,
 	}
 }
 
 type withMessage struct {
-	cause         error
-	msg           string
-	causeHasStack bool
+	msg string
+	withStack
 }
 
-func (w *withMessage) Error() string         { return w.msg + ": " + w.cause.Error() }
-func (w *withMessage) Unwrap() error         { return w.cause }
+func (w *withMessage) Error() string         { return w.msg + ": " + w.error.Error() }
 func (w *withMessage) ErrorNoUnwrap() string { return w.msg }
-func (w *withMessage) HasStack() bool        { return w.causeHasStack }
+func (w *withMessage) Format(s fmt.State, verb rune) {
+	formatError(w, s, verb)
+}
+
+type withMessageNoStack struct {
+	msg string
+	error
+}
+
+func (w *withMessageNoStack) Error() string         { return w.msg + ": " + w.error.Error() }
+func (w *withMessageNoStack) Unwrap() error         { return w.error }
+func (w *withMessageNoStack) ErrorNoUnwrap() string { return w.msg }
+func (w *withMessageNoStack) Format(s fmt.State, verb rune) {
+	formatError(w, s, verb)
+}
 
 func formatterPlusV(s fmt.State, verb rune, err error) {
 	if f, ok := err.(fmt.Formatter); ok {
 		f.Format(s, verb)
 	} else {
 		fmt.Fprintf(s, "%+v", err)
-	}
-}
-
-func (w *withMessage) Format(s fmt.State, verb rune) {
-	switch verb {
-	case 'v':
-		if s.Flag('+') {
-			formatterPlusV(s, verb, w.Unwrap())
-			writeString(s, "\n"+w.msg)
-			return
-		}
-		fallthrough
-	case 's', 'q':
-		writeString(s, w.Error())
 	}
 }
 
@@ -358,10 +353,10 @@ func writeString(w io.Writer, s string) {
 	}
 }
 
-// ErrorNoUnwrap is designed to give just the message of the individual error without any unwrapping.
+// ErrorUnwrap allows wrapped errors to give just the message of the individual error without any unwrapping.
 //
-// The existing Error() string interface loses all structure of error data.
-// This extends to all errors that it is wrapping, which will get included in the output of Error()
+// The existing Error() convention extends that output to all errors that are wrapped.
+// ErrorNoUnwrap() has just the wrapping message without additional unwrapped messages.
 //
 // Existing Error() definitions look like this:
 //
@@ -370,9 +365,12 @@ func writeString(w io.Writer, s string) {
 // An ErrorNoUnwrap() definitions look like this:
 //
 //	func (hasWrapped) ErrorNoUnwrap() string { return hasWrapped.message }
-//
-// This only needs to be defined if an error has an Unwrap method
-type ErrorNotUnwrapped interface {
+type ErrorUnwrap interface {
+	error
+	Unwrap() error
+	// ErrorNoUnwrap is the error message component of the wrapping
+	// It will be a prefix of Error()
+	// If there is no message in the wrapping then this can return an empty string
 	ErrorNoUnwrap() string
 }
 
@@ -416,6 +414,27 @@ func (ew *ErrorWrap) Unwrap() error {
 
 func (ew *ErrorWrap) WrapError(wrap func(error) error) {
 	ew.error = wrap(ew.error)
+}
+
+func (ew *ErrorWrap) HasStack() bool {
+	return HasStack(ew.error)
+}
+
+func (ew *ErrorWrap) Format(s fmt.State, verb rune) {
+	forwardFormatting(ew.error, s, verb)
+}
+
+// Forward to a Formatter if it exists
+func forwardFormatting(err error, s fmt.State, verb rune) {
+	if formatter, ok := err.(fmt.Formatter); ok {
+		formatter.Format(s, verb)
+	} else if errUnwrap, ok := err.(ErrorUnwrap); ok {
+		formatError(errUnwrap, s, verb)
+	} else {
+		fmtString := fmt.FormatString(s, verb)
+		// unwrap before calling forwamrdFormatting to avoid infinite recursion
+		fmt.Fprintf(s, fmtString, err)
+	}
 }
 
 var _ ErrorWrapper = (*ErrorWrap)(nil) // assert implements interface
