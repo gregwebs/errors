@@ -401,20 +401,21 @@ func WrapInPlace(err error, wrap func(error) error) bool {
 // If fulfills the WrapError interface.
 // This allows for wrapping an inner error without changing the outer type.
 type ErrorWrap struct {
-	Err error
+	error
 }
 
-func (ew *ErrorWrap) Error() string {
-	return ew.Err.Error()
+// NewErrorWrap returns a pointer because ErrorWrap should be used as a pointer.
+func NewErrorWrap(err error) *ErrorWrap {
+	return &ErrorWrap{err}
 }
 
 // This struct is designed to be used as an embeded error.
 func (ew *ErrorWrap) Unwrap() error {
-	return ew.Err
+	return ew.error
 }
 
 func (ew *ErrorWrap) WrapError(wrap func(error) error) {
-	ew.Err = wrap(ew.Err)
+	ew.error = wrap(ew.error)
 }
 
 var _ ErrorWrapper = (*ErrorWrap)(nil) // assert implements interface
