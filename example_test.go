@@ -2,6 +2,7 @@ package errors_test
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gregwebs/errors"
 )
@@ -13,26 +14,30 @@ func ExampleNew() {
 	// Output: whoops
 }
 
-func ExampleNew_printf() {
-	err := errors.New("whoops")
-	fmt.Printf("%+v", err)
+func firstLines(s string) string {
+	allLines := strings.SplitAfterN(s, "\n", 10)
+	lines := allLines[0:1]
+	for _, line := range allLines[1 : len(allLines)-2] {
+		// function
+		if strings.HasPrefix(line, "github.com") {
+			lines = append(lines, line)
+			// File (different on different machine)
+		} else if strings.HasPrefix(line, "\t") {
+			continue
+		} else {
+			break
+		}
+	}
+	return strings.Join(lines, "")
+}
 
-	// Example output:
-	// whoops
+func ExampleNew_printf() {
+	err := errors.Errorf("whoops, %d", 2)
+	fmt.Print(firstLines(fmt.Sprintf("%+v", err)))
+
+	// Output:
+	// whoops, 2
 	// github.com/gregwebs/errors_test.ExampleNew_printf
-	//         /home/dfc/src/github.com/gregwebs/errors/example_test.go:17
-	// testing.runExample
-	//         /home/dfc/go/src/testing/example.go:114
-	// testing.RunExamples
-	//         /home/dfc/go/src/testing/example.go:38
-	// testing.(*M).Run
-	//         /home/dfc/go/src/testing/testing.go:744
-	// main.main
-	//         /github.com/gregwebs/errors/_test/_testmain.go:106
-	// runtime.main
-	//         /home/dfc/go/src/runtime/proc.go:183
-	// runtime.goexit
-	//         /home/dfc/go/src/runtime/asm_amd64.s:2059
 }
 
 func ExampleWithMessage() {
@@ -54,38 +59,11 @@ func ExampleAddStack() {
 func ExampleAddStack_printf() {
 	cause := errors.New("whoops")
 	err := errors.AddStack(cause)
-	fmt.Printf("%+v", err)
+	fmt.Print(firstLines(fmt.Sprintf("%+v", err)))
 
-	// Example Output:
+	// Output:
 	// whoops
 	// github.com/gregwebs/errors_test.ExampleAddStack_printf
-	//         /home/fabstu/go/src/github.com/gregwebs/errors/example_test.go:55
-	// testing.runExample
-	//         /usr/lib/go/src/testing/example.go:114
-	// testing.RunExamples
-	//         /usr/lib/go/src/testing/example.go:38
-	// testing.(*M).Run
-	//         /usr/lib/go/src/testing/testing.go:744
-	// main.main
-	//         github.com/gregwebs/errors/_test/_testmain.go:106
-	// runtime.main
-	//         /usr/lib/go/src/runtime/proc.go:183
-	// runtime.goexit
-	//         /usr/lib/go/src/runtime/asm_amd64.s:2086
-	// github.com/gregwebs/errors_test.ExampleAddStack_printf
-	//         /home/fabstu/go/src/github.com/gregwebs/errors/example_test.go:56
-	// testing.runExample
-	//         /usr/lib/go/src/testing/example.go:114
-	// testing.RunExamples
-	//         /usr/lib/go/src/testing/example.go:38
-	// testing.(*M).Run
-	//         /usr/lib/go/src/testing/testing.go:744
-	// main.main
-	//         github.com/gregwebs/errors/_test/_testmain.go:106
-	// runtime.main
-	//         /usr/lib/go/src/runtime/proc.go:183
-	// runtime.goexit
-	//         /usr/lib/go/src/runtime/asm_amd64.s:2086
 }
 
 func ExampleWrap() {
@@ -114,32 +92,12 @@ func ExampleCause() {
 
 func ExampleWrap_extended() {
 	err := fn()
-	fmt.Printf("%+v\n", err)
+	fmt.Print(firstLines(fmt.Sprintf("%+v", err)))
 
-	// Example output:
+	// output:
 	// error
 	// github.com/gregwebs/errors_test.fn
-	//         /home/dfc/src/github.com/gregwebs/errors/example_test.go:47
-	// github.com/gregwebs/errors_test.ExampleCause_printf
-	//         /home/dfc/src/github.com/gregwebs/errors/example_test.go:63
-	// testing.runExample
-	//         /home/dfc/go/src/testing/example.go:114
-	// testing.RunExamples
-	//         /home/dfc/go/src/testing/example.go:38
-	// testing.(*M).Run
-	//         /home/dfc/go/src/testing/testing.go:744
-	// main.main
-	//         /github.com/gregwebs/errors/_test/_testmain.go:104
-	// runtime.main
-	//         /home/dfc/go/src/runtime/proc.go:183
-	// runtime.goexit
-	//         /home/dfc/go/src/runtime/asm_amd64.s:2059
-	// github.com/gregwebs/errors_test.fn
-	// 	  /home/dfc/src/github.com/gregwebs/errors/example_test.go:48: inner
-	// github.com/gregwebs/errors_test.fn
-	//        /home/dfc/src/github.com/gregwebs/errors/example_test.go:49: middle
-	// github.com/gregwebs/errors_test.fn
-	//      /home/dfc/src/github.com/gregwebs/errors/example_test.go:50: outer
+	// github.com/gregwebs/errors_test.ExampleWrap_extended
 }
 
 func ExampleWrapf() {
@@ -152,24 +110,11 @@ func ExampleWrapf() {
 
 func ExampleErrorf_extended() {
 	err := errors.Errorf("whoops: %s", "foo")
-	fmt.Printf("%+v", err)
+	fmt.Print(firstLines(fmt.Sprintf("%+v", err)))
 
-	// Example output:
+	// Output:
 	// whoops: foo
-	// github.com/gregwebs/errors_test.ExampleErrorf
-	//         /home/dfc/src/github.com/gregwebs/errors/example_test.go:101
-	// testing.runExample
-	//         /home/dfc/go/src/testing/example.go:114
-	// testing.RunExamples
-	//         /home/dfc/go/src/testing/example.go:38
-	// testing.(*M).Run
-	//         /home/dfc/go/src/testing/testing.go:744
-	// main.main
-	//         /github.com/gregwebs/errors/_test/_testmain.go:102
-	// runtime.main
-	//         /home/dfc/go/src/runtime/proc.go:183
-	// runtime.goexit
-	//         /home/dfc/go/src/runtime/asm_amd64.s:2059
+	// github.com/gregwebs/errors_test.ExampleErrorf_extended
 }
 
 func Example_stackTrace() {
@@ -183,13 +128,11 @@ func Example_stackTrace() {
 	}
 
 	st := err.StackTrace()
-	fmt.Printf("%+v", st[0:2]) // top two frames
+	fmt.Print(firstLines(fmt.Sprintf("%+v", st)))
 
-	// Example output:
+	// Output:
 	// github.com/gregwebs/errors_test.fn
-	//	/home/dfc/src/github.com/gregwebs/errors/example_test.go:47
 	// github.com/gregwebs/errors_test.Example_stackTrace
-	//	/home/dfc/src/github.com/gregwebs/errors/example_test.go:127
 }
 
 func ExampleCause_printf() {
