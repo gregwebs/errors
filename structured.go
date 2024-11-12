@@ -12,7 +12,7 @@ import (
 
 // HasSlogRecord is used to retrieve an slog.Record.
 // A StructuredError defines it.
-// Alternatively SlogMessager and SlogAttributer can be defined.
+// Alternatively SlogMessager and LogValuer can be defined.
 type HasSlogRecord interface {
 	GetSlogRecord() slog.Record
 }
@@ -24,17 +24,10 @@ type StructuredError interface {
 }
 
 // SlogMessager provides a string that can be used as the slog message.
-// Normally SlogAttributer is defined as well.
+// Normally LogValuer is defined as well.
 // When defining error types this may be simpler to use than defining HasSlogRecord.
 type SlogMessager interface {
 	SlogMsg() string
-}
-
-// SlogAttributer provides a string that can be used as the slog message.
-// Normally SlogMessager is defined as well.
-// When defining error types this may be simpler to use than defining HasSlogRecord.
-type SlogAttributer interface {
-	SlogAttrs() []slog.Attr
 }
 
 type structuredErr struct {
@@ -152,11 +145,11 @@ func SlogRecord(inputErr error) *slog.Record {
 					record.PC = newRecord.PC
 				}
 			}
-		} else if sloga, ok := err.(attributeError); ok {
+		} else if logValuer, ok := err.(valuerError); ok {
 			if record == nil {
-				record = toSlogRecord(sloga, 5+stack)
+				record = toSlogRecord(logValuer, 5+stack)
 			} else {
-				record.AddAttrs(sloga.SlogAttrs()...)
+				record.AddAttrs(attrsFromValue(logValuer.LogValue())...)
 			}
 		}
 
@@ -223,8 +216,17 @@ func SlogTextBuffer(opts *slog.HandlerOptions) (slog.Handler, func() string) {
 	return h, func() string { return buf.String() }
 }
 
+func slogMsgOrError(err error) string {
+	msg := slogMsg(err)
+	if msg != nil {
+		return *msg
+	} else {
+		return err.Error()
+	}
+}
+
 // slogMsg returns a message from a SlogMessager or a HasSlogRecord.
-// Otherwise it returns an empty string
+// Otherwise it returns nil
 func slogMsg(err any) *string {
 	if slogm, ok := err.(SlogMessager); ok {
 		s := slogm.SlogMsg()
@@ -238,11 +240,11 @@ func slogMsg(err any) *string {
 }
 
 /*
-// slogAttributes returns a message from a SlogAttributer or a HasSlogRecord.
+// slogAttributes returns a message from a LogValuer or a HasSlogRecord.
 // Otherwise it returns a nil array
 func slogAttributes(err any) []slog.Attr {
-	if sloga, ok := err.(SlogAttributer); ok {
-		return sloga.SlogAttrs()
+	if slogv, ok := err.(LogValuer); ok {
+		return attrsFromValue(slogv.Slogv.Value())
 	} else if hr, ok := err.(HasSlogRecord); ok {
 		record := hr.GetSlogRecord()
 		attrs := make([]slog.Attr, 0, record.NumAttrs())
@@ -257,12 +259,20 @@ func slogAttributes(err any) []slog.Attr {
 }
 */
 
-type attributeError interface {
-	SlogAttributer
+type valuerError interface {
+	slog.LogValuer
 	error
 }
 
-func toSlogRecord(err attributeError, skip int) *slog.Record {
+func attrsFromValue(value slog.Value) []slog.Attr {
+	if value.Kind() == slog.KindGroup {
+		return value.Group()
+	} else {
+		return []slog.Attr{slog.Any("error", value.Any())}
+	}
+}
+
+func toSlogRecord(err valuerError, skip int) *slog.Record {
 	if skip <= 0 {
 		skip = 2
 	}
@@ -270,14 +280,9 @@ func toSlogRecord(err attributeError, skip int) *slog.Record {
 	var pcs [1]uintptr
 	runtime.Callers(skip, pcs[:])
 	pc = pcs[0]
-	var msg string
-	if sm := slogMsg(err); sm != nil {
-		msg = *sm
-	} else {
-		msg = err.Error()
-	}
+	msg := slogMsgOrError(err)
 	record := slog.NewRecord(time.Now(), slog.LevelError, msg, pc)
-	record.AddAttrs(err.SlogAttrs()...)
+	record.AddAttrs(attrsFromValue(err.LogValue())...)
 	return &record
 }
 
@@ -314,7 +319,7 @@ func structureAsText(record slog.Record) string {
 	return str[:len(str)-1]
 }
 
-func textFromRecord(err attributeError) string {
+func textFromRecord(err valuerError) string {
 	record := toSlogRecord(err, 0)
 	if record == nil {
 		return ""
