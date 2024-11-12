@@ -155,11 +155,11 @@ func (sa slogAttrs) SlogMsg() string {
 	return "cause1"
 }
 
-func (sa slogAttrs) SlogAttrs() []slog.Attr {
-	return []slog.Attr{
+func (sa slogAttrs) LogValue() slog.Value {
+	return slog.GroupValue(
 		slog.String("key", "value"),
 		slog.Int("int", 1),
-	}
+	)
 }
 
 func TestStructuredAttrsInner(t *testing.T) {
