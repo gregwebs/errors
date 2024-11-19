@@ -27,10 +27,24 @@ func Joins(errs ...error) []error {
 	return newErrs
 }
 
-// ErrorGroup is an interface for multiple errors that are not a chain.
+// This operates the same as the non-exported standard library joinError
+// To create this from a list of possibly nil errors, you can use 'Joins'
+type MultiErr struct {
+	Errors []error
+}
+
+func (me MultiErr) Error() string {
+	return stderrors.Join(me.Errors...).Error()
+}
+
+func (me MultiErr) Unwrap() []error {
+	return me.Errors
+}
+
+// errorGroup is an interface for multiple errors that are not a chain.
 // This happens for example when executing multiple operations in parallel.
-// Also can now define Unwraps() []error
-type ErrorGroup interface {
+// The standard Go API is now Unwrap() []error
+type errorGroup interface {
 	Errors() []error
 }
 
@@ -38,13 +52,13 @@ type unwraps interface {
 	Unwrap() []error
 }
 
-// If the error is not nil and an ErrorGroup or satisfies Unwraps() []error, return its list of errors
+// If the error is not nil and an errorGroup or satisfies Unwraps() []error, return its list of errors
 // otherwise return nil
 func Errors(err error) []error {
 	if err == nil {
 		return nil
 	}
-	if group, ok := err.(ErrorGroup); ok {
+	if group, ok := err.(errorGroup); ok {
 		return group.Errors()
 	} else if group, ok := err.(unwraps); ok {
 		return group.Unwrap()
