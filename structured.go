@@ -3,6 +3,7 @@ package errors
 import (
 	"bytes"
 	"context"
+	stderrors "errors"
 	"fmt"
 	"log/slog"
 	"runtime"
@@ -76,30 +77,32 @@ func (se structuredErr) Format(s fmt.State, verb rune) {
 // The slog Record can be retrieved with SlogRecord.
 // Structured errors are more often created by wrapping existing errors with Wraps.
 func Slog(msg string, args ...interface{}) StructuredError {
-	return Wraps(New(""), msg, args...)
+	return wrapsSkip(AddStackSkip(stderrors.New(""), 1), msg, 1, args...)
 }
 
-// Wraps ends with an "s" to indicate it is Structured.
-// Accepts as args any valid slog args. These will generate an slog Record
-// Also accepts []slog.Attr as a single argument to avoid having to cast that argument.
-func Wraps(err error, msg string, args ...interface{}) StructuredError {
+func wrapsSkip(err error, msg string, skip int, args ...interface{}) StructuredError {
 	if err == nil {
 		return nil
 	}
 	var pc uintptr
-	var pcs [1]uintptr
-	runtime.Callers(2, pcs[:])
-	pc = pcs[0]
-
+	if hr, ok := err.(HasSlogRecord); ok {
+		record := hr.GetSlogRecord()
+		pc = record.PC
+	} else {
+		var pcs [1]uintptr
+		runtime.Callers(2+skip, pcs[:])
+		pc = pcs[0]
+	}
 	record := slog.NewRecord(time.Now(), slog.LevelError, msg, pc)
-	// support passing an array of Attr: otherwise would require a cast
-	for loop := true; loop && len(args) > 0; {
+	// support passing an array of Attr
+	// otherwise would require a cast to any
+	for i := 0; i < len(args) && len(args) > 0; {
 		switch attrs := any(args[0]).(type) {
 		case []slog.Attr:
 			record.AddAttrs(attrs...)
 			args = args[1:]
 		default:
-			loop = false
+			i += 2 // k/v pairs
 		}
 	}
 	if len(args) > 0 {
@@ -107,11 +110,21 @@ func Wraps(err error, msg string, args ...interface{}) StructuredError {
 	}
 
 	// TODO: use the exact same stack for the error and the record
+	if !HasStack(err) {
+		err = AddStackSkip(err, 1+skip)
+	}
 	return structuredErr{
 		Record: record,
-		err:    AddStackSkip(err, 1),
+		err:    err,
 		msg:    msg,
 	}
+}
+
+// Wraps ends with an "s" to indicate it is Structured.
+// Accepts as args any valid slog args. These will generate an slog Record
+// Also accepts []slog.Attr as a single argument to avoid having to cast that argument.
+func Wraps(err error, msg string, args ...interface{}) StructuredError {
+	return wrapsSkip(err, msg, 1, args...)
 }
 
 // SlogRecord traverses the error chain, calling Unwrap(), to look for slog Records
@@ -205,9 +218,9 @@ func SlogRecord(inputErr error) *slog.Record {
 //	if record := errors.SlogRecord(err); record != nil {
 //		handler, output := errors.SlogTextBuffer(slog.HandlerOptions{AddSource: false})
 //		if err := handler.Handle(ctx, *record); err != nil {
-//			zap.S().Errorf("%+v", err)
+//			fmt.Println(fmt.Sprintf("%+v", err))
 //		} else {
-//			zap.S().Error(output())
+//			fmt.Println(output())
 //		}
 //	}
 func SlogTextBuffer(opts *slog.HandlerOptions) (slog.Handler, func() string) {

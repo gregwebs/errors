@@ -3,6 +3,7 @@ package errors
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -54,6 +55,9 @@ func TestStructured(t *testing.T) {
 	if err.Error() != "structured2 key=value int=3: cause1 key=value int=1" {
 		t.Errorf("unexpected Error: %s", err.Error())
 	}
+	if !strings.Contains(fmt.Sprintf("%+v", err), "structured_test.go") {
+		t.Errorf("unexpected verbose print: %+v", err)
+	}
 
 	// Test stack trace
 	hOpts := slog.HandlerOptions{
@@ -63,8 +67,9 @@ func TestStructured(t *testing.T) {
 	if err := handler.Handle(context.Background(), *record); err != nil {
 		t.Fatalf("error writing out record %+v", err)
 	}
-	if !strings.Contains(getBuf(), "structured_test.go") {
-		t.Errorf("expected stack trace with file")
+	buf := getBuf()
+	if !strings.Contains(buf, "structured_test.go") {
+		t.Errorf("expected stack trace with file: %s", buf)
 	}
 }
 
