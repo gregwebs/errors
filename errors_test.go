@@ -91,11 +91,11 @@ func TestCause(t *testing.T) {
 		want: x,
 	}, {
 		name: "nil With",
-		err:  WithMessage(nil, "whoops"),
+		err:  WrapNoStack(nil, "whoops"),
 		want: nil,
 	}, {
-		name: "WithMessage",
-		err:  WithMessage(io.EOF, "whoops"),
+		name: "WrapNoStack",
+		err:  WrapNoStack(io.EOF, "whoops"),
 		want: io.EOF,
 	}, {
 		name: "AddStack nil",
@@ -227,27 +227,27 @@ func TestAddStackDedup(t *testing.T) {
 	}
 }
 
-func TestWithMessageNil(t *testing.T) {
-	got := WithMessage(nil, "no error")
+func TestWrapNoStackNil(t *testing.T) {
+	got := WrapNoStack(nil, "no error")
 	if got != nil {
-		t.Errorf("WithMessage(nil, \"no error\"): got %#v, expected nil", got)
+		t.Errorf("WrapNoStack(nil, \"no error\"): got %#v, expected nil", got)
 	}
 }
 
-func TestWithMessage(t *testing.T) {
+func TestWrapNoStack(t *testing.T) {
 	tests := []struct {
 		err     error
 		message string
 		want    string
 	}{
 		{io.EOF, "read error", "read error: EOF"},
-		{WithMessage(io.EOF, "read error"), "client error", "client error: read error: EOF"},
+		{WrapNoStack(io.EOF, "read error"), "client error", "client error: read error: EOF"},
 	}
 
 	for _, tt := range tests {
-		got := WithMessage(tt.err, tt.message).Error()
+		got := WrapNoStack(tt.err, tt.message).Error()
 		if got != tt.want {
-			t.Errorf("WithMessage(%v, %q): got: %q, want %q", tt.err, tt.message, got, tt.want)
+			t.Errorf("WrapNoStack(%v, %q): got: %q, want %q", tt.err, tt.message, got, tt.want)
 		}
 	}
 }
@@ -265,8 +265,8 @@ func TestErrorEquality(t *testing.T) {
 		Errorf("EOF"),
 		Wrap(io.EOF, "EOF"),
 		Wrapf(io.EOF, "EOF%d", 2),
-		WithMessage(nil, "whoops"),
-		WithMessage(io.EOF, "whoops"),
+		WrapNoStack(nil, "whoops"),
+		WrapNoStack(io.EOF, "whoops"),
 		AddStack(io.EOF),
 		AddStack(nil),
 		AddStack(io.EOF),

@@ -40,9 +40,9 @@ func ExampleNew_printf() {
 	// github.com/gregwebs/errors_test.ExampleNew_printf
 }
 
-func ExampleWithMessage() {
+func ExampleWrapNoStack() {
 	cause := errors.New("whoops")
-	err := errors.WithMessage(cause, "oh noes")
+	err := errors.WrapNoStack(cause, "oh noes")
 	fmt.Println(err)
 
 	// Output: oh noes: whoops

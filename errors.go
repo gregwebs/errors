@@ -240,12 +240,17 @@ func Wrapf(err error, format string, args ...interface{}) error {
 	}
 }
 
-// WithMessage annotates err with a new message.
-// If err is nil, WithMessage returns nil.
-// WithMessage does not add a new stack trace.
-func WithMessage(err error, message string) error {
+// WrapoNoStack annotates err with a new message.
+// If err is nil, returns nil.
+// WrapNoStack does not add a new stack trace.
+// When used consecutively, it will append the message strings rather than creating a new error
+func WrapNoStack(err error, message string) error {
 	if err == nil {
 		return nil
+	}
+	if ns, ok := err.(*withMessageNoStack); ok {
+		ns.msg = message + ": " + ns.msg
+		return ns
 	}
 	return &withMessageNoStack{
 		msg:   message,
