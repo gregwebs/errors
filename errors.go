@@ -314,20 +314,6 @@ func Unwrap(err error) error {
 	return u.Unwrap()
 }
 
-// Find an error in the chain that matches a test function.
-// returns nil if no error is found.
-func Find(origErr error, test func(error) bool) error {
-	var foundErr error
-	WalkDeep(origErr, func(err error) bool {
-		if test(err) {
-			foundErr = err
-			return true
-		}
-		return false
-	})
-	return foundErr
-}
-
 // A re-export of the standard library errors.Is
 func Is(err, target error) bool {
 	return stderrors.Is(err, target)
