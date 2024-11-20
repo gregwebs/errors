@@ -227,77 +227,77 @@ func TestFormatAddStack(t *testing.T) {
 
 // These tests are sensitive to changes in the numbers of lines in the file
 // We should fix this
-func TestFormatWithMessage(t *testing.T) {
+func TestFormatWrapNoStack(t *testing.T) {
 	tests := []struct {
 		error
 		format string
 		want   []string
 	}{{
-		WithMessage(New("error"), "error2"),
+		WrapNoStack(New("error"), "error2"),
 		"%s",
 		[]string{"error2: error"},
 	}, {
-		WithMessage(New("error"), "error2"),
+		WrapNoStack(New("error"), "error2"),
 		"%v",
 		[]string{"error2: error"},
 	}, {
-		WithMessage(New("error"), "error2"),
+		WrapNoStack(New("error"), "error2"),
 		"%+v",
 		[]string{
 			"error",
-			"github.com/gregwebs/errors.TestFormatWithMessage\n" +
+			"github.com/gregwebs/errors.TestFormatWrapNoStack\n" +
 				"\tgithub.com/gregwebs/errors/format_test.go:244",
 			"error2"},
 	}, {
-		WithMessage(io.EOF, "addition1"),
+		WrapNoStack(io.EOF, "addition1"),
 		"%s",
 		[]string{"addition1: EOF"},
 	}, {
-		WithMessage(io.EOF, "addition1"),
+		WrapNoStack(io.EOF, "addition1"),
 		"%v",
 		[]string{"addition1: EOF"},
 	}, {
-		WithMessage(io.EOF, "addition1"),
+		WrapNoStack(io.EOF, "addition1"),
 		"%+v",
 		[]string{"EOF", "addition1"},
 	}, {
-		WithMessage(WithMessage(io.EOF, "addition1"), "addition2"),
+		WrapNoStack(WrapNoStack(io.EOF, "addition1"), "addition2"),
 		"%v",
 		[]string{"addition2: addition1: EOF"},
 	}, {
-		WithMessage(WithMessage(io.EOF, "addition1"), "addition2"),
+		WrapNoStack(WrapNoStack(io.EOF, "addition1"), "addition2"),
 		"%+v",
-		[]string{"EOF", "addition1", "addition2"},
+		[]string{"EOF", "addition2: addition1"},
 	}, {
-		Wrap(WithMessage(io.EOF, "error1"), "error2"),
+		Wrap(WrapNoStack(io.EOF, "error1"), "error2"),
 		"%+v",
 		[]string{"EOF", "error1", "error2",
-			"github.com/gregwebs/errors.TestFormatWithMessage\n" +
+			"github.com/gregwebs/errors.TestFormatWrapNoStack\n" +
 				"\tgithub.com/gregwebs/errors/format_test.go:272"},
 	}, {
-		WithMessage(Errorf("error%d", 1), "error2"),
+		WrapNoStack(Errorf("error%d", 1), "error2"),
 		"%+v",
 		[]string{"error1",
-			"github.com/gregwebs/errors.TestFormatWithMessage\n" +
+			"github.com/gregwebs/errors.TestFormatWrapNoStack\n" +
 				"\tgithub.com/gregwebs/errors/format_test.go:278",
 			"error2"},
 	}, {
-		WithMessage(AddStack(io.EOF), "error"),
+		WrapNoStack(AddStack(io.EOF), "error"),
 		"%+v",
 		[]string{
 			"EOF",
-			"github.com/gregwebs/errors.TestFormatWithMessage\n" +
+			"github.com/gregwebs/errors.TestFormatWrapNoStack\n" +
 				"\tgithub.com/gregwebs/errors/format_test.go:285",
 			"error"},
 	}, {
-		WithMessage(WithMessage(AddStack(io.EOF), "inside-error"), "outside-error"),
+		WrapNoStack(WrapNoStack(AddStack(io.EOF), "inside-error"), "outside-error"),
 		"%+v",
 		[]string{
 			"EOF",
-			"github.com/gregwebs/errors.TestFormatWithMessage\n" +
+			"github.com/gregwebs/errors.TestFormatWrapNoStack\n" +
 				"\tgithub.com/gregwebs/errors/format_test.go:293",
-			"inside-error",
-			"outside-error"},
+			"outside-error: inside-error",
+		},
 	}}
 
 	for i, tt := range tests {
@@ -325,7 +325,7 @@ func TestFormatWithMessage(t *testing.T) {
 
 	wrappers := []wrapper{
 		{
-			func(err error) error { return WithMessage(err, "with-message") },
+			func(err error) error { return WrapNoStack(err, "with-message") },
 			[]string{"with-message"},
 		}, {
 			func(err error) error { return AddStack(err) },
