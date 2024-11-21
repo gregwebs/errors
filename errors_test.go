@@ -411,3 +411,33 @@ func TestErrorWrapper(t *testing.T) {
 		t.Errorf("wrapf Error() %s", s)
 	}
 }
+
+type ErrArray []error
+
+func (ea ErrArray) Error() string {
+	return errors.Join(ea).Error()
+}
+
+func TestIsNil(t *testing.T) {
+	var err error = (*nilError)(nil)
+	got := Wrap(err, "no error")
+	if got != nil {
+		t.Errorf("Wrap(nil, \"no error\"): got %#v, expected nil", got)
+	}
+	if IsNil(nil) == false {
+		t.Errorf("IsNil expected true")
+	}
+	if IsNil(err) == false {
+		t.Errorf("IsNil expected true")
+	}
+	if IsNil(ErrArray([]error{})) == false {
+		t.Errorf("IsNil expected true")
+	}
+
+	if IsNil(nilError{}) == true {
+		t.Errorf("IsNil expected false")
+	}
+	if IsNil(ErrArray([]error{nilError{}})) == true {
+		t.Errorf("IsNil expected false")
+	}
+}
