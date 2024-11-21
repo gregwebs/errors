@@ -1,10 +1,11 @@
 # errors
 
-Package errors provides stack traces for errors and a more structured API for error wrapping.
+* stack traces for errors
+* a more structured API for error wrapping.
 
-The traditional error handling idiom in Go is roughly akin to
+There is a [blog article overview here](https://blog.gregweber.info/blog/go-errors-library/).
 
-## Adding context to an error
+## Adding stack traces and context to an error
 
 The errors.Wrap function returns a new error that adds context to the original error. For example
 
@@ -17,8 +18,15 @@ if err != nil {
 
 There are a few other functions available such as `Wrapf` (use a format string) and `New` and `Errorf` (create a new error).
 
-This is an improvement over the standard go API that inserts errors into format strings.
-But most importantly, these APIs will add a stack trace.
+These all add a stack trace to errors.
+So generally wherever an error is generated in your code, you want to wrap it to add a stack trace.
+If you don't want to bother with adding any additional metadata, you can just use `AddStack`.
+
+You can also add context with slog attributes with `Wraps`
+
+```go
+return errors.Wraps(err, "failure", "id", 5, "key", "value)
+```
 
 ## Using with standard library errors
 
