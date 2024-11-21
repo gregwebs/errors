@@ -82,6 +82,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"reflect"
 )
 
 // New returns an error with the supplied message.
@@ -149,7 +150,7 @@ func HasStack(err error) bool {
 // AddStack annotates err with a stack trace at the point WithStack was called.
 // It will first check with HasStack to see if a stack trace already exists before creating another one.
 func AddStack(err error) error {
-	if err == nil {
+	if IsNil(err) {
 		return nil
 	}
 	if HasStack(err) {
@@ -160,7 +161,7 @@ func AddStack(err error) error {
 
 // Same as AddStack but specify an additional number of callers to skip
 func AddStackSkip(err error, skip int) error {
-	if err == nil {
+	if IsNil(err) {
 		return nil
 	}
 	if HasStack(err) {
@@ -218,7 +219,7 @@ func (a *addStack) Format(s fmt.State, verb rune) {
 // at the point Wrap is called, and the supplied message.
 // If err is nil, Wrap returns nil.
 func Wrap(err error, message string) error {
-	if err == nil {
+	if IsNil(err) {
 		return nil
 	}
 	return &withMessage{
@@ -231,7 +232,7 @@ func Wrap(err error, message string) error {
 // at the point Annotatef is call, and the format specifier.
 // If err is nil, Annotatef returns nil.
 func Wrapf(err error, format string, args ...interface{}) error {
-	if err == nil {
+	if IsNil(err) {
 		return nil
 	}
 	return &withMessage{
@@ -245,7 +246,7 @@ func Wrapf(err error, format string, args ...interface{}) error {
 // WrapNoStack does not add a new stack trace.
 // When used consecutively, it will append the message strings rather than creating a new error
 func WrapNoStack(err error, message string) error {
-	if err == nil {
+	if IsNil(err) {
 		return nil
 	}
 	if ns, ok := err.(*withMessageNoStack); ok {
@@ -376,7 +377,7 @@ type ErrorWrapper interface {
 // Returns true if wrapped in place.
 // Returns false if not wrapped in place, including if the given error is nil.
 func WrapInPlace(err error, wrap func(error) error) bool {
-	if err == nil {
+	if IsNil(err) {
 		return false
 	}
 	if inPlace, ok := AsType[ErrorWrapper](err); ok {
@@ -443,4 +444,25 @@ func WrapfFn(msg string, args ...interface{}) func(error) error {
 // WrapFn returns a wrapping function that calls Wraps
 func WrapsFn(msg string, args ...interface{}) func(error) error {
 	return func(err error) error { return Wraps(err, msg, args...) }
+}
+
+// IsNil performs additional checks besides == nil
+// This helps deal with a design issue with Go interfaces: https://go.dev/doc/faq#nil_error
+// It will return true if the error interface contains a nil pointer, interface, slice, array or map
+// It will return true if the slice or array or map is empty
+func IsNil(err error) bool {
+	if err == nil {
+		return true
+	}
+
+	v := reflect.ValueOf(err)
+	k := v.Kind()
+	switch k {
+	case reflect.Pointer, reflect.UnsafePointer, reflect.Interface:
+		return v.IsNil()
+	case reflect.Slice, reflect.Array, reflect.Map:
+		return v.IsNil() || v.Len() == 0
+	}
+
+	return false
 }
