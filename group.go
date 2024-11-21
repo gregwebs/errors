@@ -27,20 +27,6 @@ func Joins(errs ...error) []error {
 	return newErrs
 }
 
-// This operates the same as the non-exported standard library joinError
-// To create this from a list of possibly nil errors, you can use 'Joins'
-type MultiErr struct {
-	Errors []error
-}
-
-func (me MultiErr) Error() string {
-	return stderrors.Join(me.Errors...).Error()
-}
-
-func (me MultiErr) Unwrap() []error {
-	return me.Errors
-}
-
 // errorGroup is an interface for multiple errors that are not a chain.
 // This happens for example when executing multiple operations in parallel.
 // The standard Go API is now Unwrap() []error
