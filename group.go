@@ -8,19 +8,21 @@ func Join(errs ...error) error {
 }
 
 // The same as errors.Join but does not wrap the array in an error
-func Joins(errs ...error) []error {
+// Also uses generics to retain the type
+// Also uses IsNil for a better nil check
+func Joins[T error](errs ...T) []T {
 	n := 0
 	for _, err := range errs {
-		if err != nil {
+		if !IsNil(err) {
 			n++
 		}
 	}
 	if n == 0 {
 		return nil
 	}
-	newErrs := make([]error, 0, n)
+	newErrs := make([]T, 0, n)
 	for _, err := range errs {
-		if err != nil {
+		if !IsNil(err) {
 			newErrs = append(newErrs, err)
 		}
 	}
