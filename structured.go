@@ -191,7 +191,7 @@ func SlogRecord(inputErr error) *slog.Record {
 					}
 				}
 			} else if msgUnrecognized == "" {
-				if len(msgs) > 0 && newErrMsg != msgs[len(msgs)-1] {
+				if len(msgs) == 0 || newErrMsg != msgs[len(msgs)-1] {
 					msgUnrecognized = newErrMsg
 				}
 			} else {
