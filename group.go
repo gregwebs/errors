@@ -7,10 +7,8 @@ func Join(errs ...error) error {
 	return stderrors.Join(errs...)
 }
 
-// The same as errors.Join but does not wrap the array in an error
-// Also uses generics to retain the type
-// Also uses IsNil for a better nil check
-func Joins[T error](errs ...T) []T {
+// A generic form of Joins
+func JoinsG[T error](errs ...T) []T {
 	n := 0
 	for _, err := range errs {
 		if !IsNil(err) {
@@ -27,6 +25,12 @@ func Joins[T error](errs ...T) []T {
 		}
 	}
 	return newErrs
+}
+
+// The same as errors.Join but returns the array rather than wrapping it.
+// Also uses IsNil for a better nil check.
+func Joins(errs ...error) []error {
+	return JoinsG(errs...)
 }
 
 // errorGroup is an interface for multiple errors that are not a chain.

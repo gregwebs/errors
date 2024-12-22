@@ -4,6 +4,7 @@ package errors
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 )
@@ -91,4 +92,25 @@ func TestFind(t *testing.T) {
 			t.Errorf("WrapNoStack(%v): got: %q, want %q", tt.err, got, tt.found)
 		}
 	}
+}
+
+func ExampleUnwrapGroups() {
+	err1 := New("error 1")
+	err2 := New("error 2")
+	group := Join(err1, err2)
+	wrapped := Wrap(group, "wrapped")
+
+	for e := range UnwrapGroups(wrapped) {
+		fmt.Println(e.Error() + "\n")
+	}
+	// Output:
+	// wrapped: error 1
+	// error 2
+	//
+	// error 1
+	// error 2
+	//
+	// error 1
+	//
+	// error 2
 }
