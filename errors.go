@@ -175,8 +175,8 @@ func Wrap(err error, message string) error {
 }
 
 // Wrapf returns an error annotating err with a stack trace
-// at the point Annotatef is call, and the format specifier.
-// If err is nil, Annotatef returns nil.
+// at the point Wrapf is call, and the format specifier.
+// If err is nil, Wrapf returns nil.
 func Wrapf(err error, format string, args ...interface{}) error {
 	if IsNil(err) {
 		return nil
@@ -187,9 +187,9 @@ func Wrapf(err error, format string, args ...interface{}) error {
 	}
 }
 
-// WrapoNoStack annotates err with a new message.
-// If err is nil, returns nil.
 // WrapNoStack does not add a new stack trace.
+// WrapNoStack annotates err with a new message.
+// If err is nil, returns nil.
 // When used consecutively, it will append the message strings rather than creating a new error
 func WrapNoStack(err error, message string) error {
 	if IsNil(err) {

@@ -73,7 +73,7 @@ func (se structuredErr) Format(s fmt.State, verb rune) {
 
 // Slog creates an error that instead of generating a format string generates a structured slog Record.
 // Accepts as args any valid slog args.
-// Also accepts []slog.Attr as a single argument to avoid having to cast that argument.
+// Also accepts `[]slog.Attr` as a single argument to avoid having to cast that argument.
 // The slog Record can be retrieved with SlogRecord.
 // Structured errors are more often created by wrapping existing errors with Wraps.
 func Slog(msg string, args ...interface{}) StructuredError {
