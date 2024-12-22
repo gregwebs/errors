@@ -1,15 +1,14 @@
 // Package errors provides error handling primitives that add stack traces and metadata to errors.
 //
-// Key Concepts
-// ----------------
+// Key Concepts:
 //
-// *   **Adding Stack traces**: All the error creation and wrapping functions ensure a stack trace is recorded for the error.
-// *   **Adding Context**: The `errors.Wrap` and `errors.Wrapf` functions adds an additional string context to an error.
-// *   **Adding Structured data**: The `errors.Wraps` and `errors.Slog` functions adds structured data to errors.
-// *   **Formatted Printing**: Errors returned from this package implement the `fmt.Formatter` interface- verbose printing options will show the stack trace.
-// *   **Retrieving underlying errors**: In addition to standard `errors.Unwrap`, `errors.Is`, and `errors.As`, there are `errors.AsType`, `errors.Cause`, and `errors.UnwrapGroups`.
-// *   **Retrieving the Stack Trace**: `errors.GetStackTracer` retrieves the stack trace from the error.
-// *   **Retrieving the structured data**: `errors.SlogRecord` retrieves structured data as an slog.Record.
+//   - Adding Stack traces: All the error creation and wrapping functions ensure a stack trace is recorded for the error.
+//   - Adding Context: The `errors.Wrap` and `errors.Wrapf` functions adds an additional string context to an error.
+//   - Adding Structured data: The `errors.Wraps` and `errors.Slog` functions adds structured data to errors.
+//   - Formatted Printing: Errors returned from this package implement the `fmt.Formatter` interface- verbose printing options will show the stack trace.
+//   - Retrieving underlying errors: In addition to standard `errors.Unwrap`, `errors.Is`, and `errors.As`, there are `errors.AsType`, `errors.Cause`, and `errors.UnwrapGroups`.
+//   - Retrieving the Stack Trace: `errors.GetStackTracer` retrieves the stack trace from the error.
+//   - Retrieving the structured data: `errors.SlogRecord` retrieves structured data as an slog.Record.
 //
 // # Formatted printing of errors
 //
