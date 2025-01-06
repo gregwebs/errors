@@ -2,31 +2,23 @@ package errors
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"path"
 	"runtime"
 	"strings"
 )
 
 // StackTracer retrieves the StackTrace
-// Generally you would want to use the GetStackTracer function to do that.
 type StackTracer interface {
 	StackTrace() StackTrace
 }
 
-// GetStackTracer will return the first StackTracer in the causer chain.
-// This function is used by AddStack to avoid creating redundant stack traces.
-//
-// You can also use the StackTracer interface on the returned error to get the stack trace.
-func GetStackTracer(origErr error) StackTracer {
-	var stacked StackTracer
-	WalkDeep(origErr, func(err error) bool {
-		if stackTracer, ok := err.(StackTracer); ok {
-			stacked = stackTracer
-			return true
-		}
-		return false
-	})
-	return stacked
+// StackTraceFormatter is an alternative to StackTracer that only uses standard library types
+// In practice the stack trace is usually only used for printing.
+// With this definition a package can define a printing of a stack trace without importing this package.
+type StackTraceFormatter interface {
+	FormatStackTrace(s fmt.State, verb rune)
 }
 
 // Frame represents a program counter inside a stack frame.
@@ -78,28 +70,34 @@ func (f Frame) Format(s fmt.State, verb rune) {
 			pc := f.pc()
 			fn := runtime.FuncForPC(pc)
 			if fn == nil {
-				writeString(s, "unknown")
+				writeStringStackfmt(s, "unknown")
 			} else {
 				file, _ := fn.FileLine(pc)
 				fmt.Fprintf(s, "%s\n\t%s", fn.Name(), file)
 			}
 		default:
-			writeString(s, path.Base(f.file()))
+			writeStringStackfmt(s, path.Base(f.file()))
 		}
 	case 'd':
 		fmt.Fprintf(s, "%d", f.line())
 	case 'n':
 		name := runtime.FuncForPC(f.pc()).Name()
-		writeString(s, funcname(name))
+		writeStringStackfmt(s, funcname(name))
 	case 'v':
 		f.Format(s, 's')
-		writeString(s, ":")
+		writeStringStackfmt(s, ":")
 		f.Format(s, 'd')
 	}
 }
 
 // StackTrace is stack of Frames from innermost (newest) to outermost (oldest).
 type StackTrace []Frame
+
+type Stack []uintptr
+
+func (st Stack) StackTrace() StackTrace {
+	return st.Frames()
+}
 
 // Format formats the stack of Frames according to the fmt.Formatter interface.
 //
@@ -127,40 +125,36 @@ func (st StackTrace) Format(s fmt.State, verb rune) {
 	}
 }
 
-// stack represents a stack of program counters.
-type stack []uintptr
-
-func (s *stack) Format(st fmt.State, verb rune) {
-	switch verb {
-	case 'v':
-		switch {
-		case st.Flag('+'):
-			for _, pc := range *s {
-				f := Frame(pc)
-				fmt.Fprintf(st, "\n%+v", f)
-			}
-		}
-	}
+func (st StackTrace) FormatStackTrace(s fmt.State, verb rune) {
+	st.Format(s, verb)
 }
 
-func (s *stack) StackTrace() StackTrace {
-	f := make([]Frame, len(*s))
+func (st Stack) Format(s fmt.State, verb rune) {
+	StackTrace(st.Frames()).Format(s, verb)
+}
+
+func (st Stack) FormatStackTrace(s fmt.State, verb rune) {
+	StackTrace(st.Frames()).FormatStackTrace(s, verb)
+}
+
+func (s Stack) Frames() []Frame {
+	f := make([]Frame, len(s))
 	for i := 0; i < len(f); i++ {
-		f[i] = Frame((*s)[i])
+		f[i] = Frame(s[i])
 	}
 	return f
 }
 
-func callers() *stack {
-	return callersSkip(4)
+func NewStack() Stack {
+	return NewStackSkip(4)
 }
 
-func callersSkip(skip int) *stack {
+func NewStackSkip(skip int) Stack {
 	const depth = 32
 	var pcs [depth]uintptr
 	n := runtime.Callers(skip, pcs[:])
-	var st stack = pcs[0:n]
-	return &st
+	var st Stack = pcs[0:n]
+	return st
 }
 
 // funcname removes the path prefix component of a function's name reported by func.Name().
@@ -171,15 +165,18 @@ func funcname(name string) string {
 	return name[i+1:]
 }
 
-// NewStack is for library implementers that want to generate a stack trace.
-// Normally you should insted use AddStack to get an error with a stack trace.
-//
-// The result of this function can be turned into a stack trace by calling .StackTrace()
-//
-// This function takes an argument for the number of stack frames to skip.
-// This avoids putting stack generation function calls like this one in the stack trace.
-// A value of 0 will give you the line that called NewStack(0)
-// A library author wrapping this in their own function will want to use a value of at least 1.
-func NewStack(skip int) StackTracer {
-	return callersSkip(skip + 3)
+// HandleWriteErrorStackfmt handles (rare) errors when writing to fmt.State.
+// It defaults to printing the errors.
+func HandleWriteErrorStackfmt(handler func(err error)) {
+	handleWriteErrorStackfmt = handler
+}
+
+var handleWriteErrorStackfmt = func(err error) {
+	log.Println(err)
+}
+
+func writeStringStackfmt(w io.Writer, s string) {
+	if _, err := io.WriteString(w, s); err != nil {
+		handleWriteErrorStackfmt(err)
+	}
 }

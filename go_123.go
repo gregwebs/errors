@@ -18,12 +18,12 @@ func UnwrapGroups(err error) iter.Seq[error] {
 	}
 }
 
-/*
-func unwrapGroupsStack(err error) iter.Seq2[int, error] {
+// UnwrapGroupsStack is similar to UnwrapGroups.
+// It adds a second parameter the level of depth in the error tree.
+func UnwrapGroupsLevel(err error) iter.Seq2[int, error] {
 	return func(yield func(int, error) bool) {
-		_ = walkDeepStack(err, func(e error, stack int) bool {
-			return !yield(stack, e)
-		}, 3)
+		_ = WalkDeepLevel(err, func(e error, level int) bool {
+			return !yield(level, e)
+		})
 	}
 }
-*/

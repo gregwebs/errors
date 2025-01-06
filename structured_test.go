@@ -117,8 +117,9 @@ func TestStructuredWrap(t *testing.T) {
 	if err := handler.Handle(context.Background(), *record); err != nil {
 		t.Fatalf("error writing out record %+v", err)
 	}
-	if !strings.Contains(getBuf(), "structured_test.go") {
-		t.Errorf("expected stack trace with file")
+	buf := getBuf()
+	if !strings.Contains(buf, "structured_test.go") {
+		t.Errorf("expected stack trace with file, got %s", string(buf))
 	}
 }
 
