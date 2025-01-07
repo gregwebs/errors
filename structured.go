@@ -100,7 +100,7 @@ func wrapsSkip(err error, msg string, skip int, args ...interface{}) StructuredE
 		return nil
 	}
 	var pc uintptr
-	stack := NewStackSkip(skip + 3)
+	stack := NewStackSkip(skip + 1)
 	if hr, ok := err.(HasSlogRecord); ok {
 		record := hr.GetSlogRecord()
 		pc = record.PC

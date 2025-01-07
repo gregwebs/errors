@@ -146,13 +146,13 @@ func (s Stack) Frames() []Frame {
 }
 
 func NewStack() Stack {
-	return NewStackSkip(4)
+	return NewStackSkip(2)
 }
 
 func NewStackSkip(skip int) Stack {
 	const depth = 32
 	var pcs [depth]uintptr
-	n := runtime.Callers(skip, pcs[:])
+	n := runtime.Callers(2+skip, pcs[:])
 	var st Stack = pcs[0:n]
 	return st
 }

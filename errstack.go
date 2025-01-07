@@ -74,7 +74,7 @@ func AddStackSkip(err error, skip int) error {
 	if HasStack(err) {
 		return err
 	}
-	return &addStack{withStack{err, NewStackSkip(skip + 3)}}
+	return &addStack{withStack{err, NewStackSkip(skip + 1)}}
 }
 
 type withStack struct {

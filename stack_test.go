@@ -201,7 +201,7 @@ func TestStackTrace(t *testing.T) {
 // This comment helps to maintain original line numbers
 // Perhaps this test is too fragile :)
 func stackTrace() StackTrace {
-	return NewStackSkip(2).StackTrace()
+	return NewStackSkip(0).StackTrace()
 	// This comment helps to maintain original line numbers
 	// Perhaps this test is too fragile :)
 }
@@ -271,8 +271,8 @@ func TestStackTraceFormat(t *testing.T) {
 }
 
 func TestNewStack(t *testing.T) {
-	got := NewStackSkip(3).StackTrace()
-	want := NewStackSkip(3).StackTrace()
+	got := NewStackSkip(1).StackTrace()
+	want := NewStackSkip(1).StackTrace()
 	if got[0] != want[0] {
 		t.Errorf("NewStack(remove NewStack): want: %v, got: %v", want, got)
 	}
