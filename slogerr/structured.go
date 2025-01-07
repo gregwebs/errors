@@ -1,4 +1,4 @@
-package errors
+package slogerr
 
 import (
 	"bytes"
@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/gregwebs/errors/stackfmt"
 )
 
 // HasSlogRecord is used to retrieve an slog.Record.
@@ -37,7 +39,7 @@ type structuredErr struct {
 	Record slog.Record
 	err    error
 	msg    string
-	stack  Stack
+	stack  stackfmt.Stack
 }
 
 func (se structuredErr) GetSlogRecord() slog.Record {
@@ -66,7 +68,7 @@ func (se structuredErr) Format(s fmt.State, verb rune) {
 		if s.Flag('+') {
 			formatterPlusV(s, verb, se.err)
 			if !hasStack(se.err) {
-				var st StackTracer
+				var st stackfmt.StackTracer
 				if stderrors.As(se.err, &st) {
 					st.StackTrace().Format(s, verb)
 				} else {
@@ -86,12 +88,12 @@ func (se structuredErr) FormatStackTrace(s fmt.State, verb rune) {
 	se.stack.FormatStackTrace(s, verb)
 }
 
-// Slog creates an error that instead of generating a format string generates a structured slog Record.
+// New creates an error that instead of generating a format string generates a structured slog Record.
 // Accepts as args any valid slog args.
 // Also accepts `[]slog.Attr` as a single argument to avoid having to cast that argument.
 // The slog Record can be retrieved with SlogRecord.
 // Structured errors are more often created by wrapping existing errors with Wraps.
-func Slog(msg string, args ...interface{}) StructuredError {
+func New(msg string, args ...interface{}) StructuredError {
 	return wrapsSkip(stderrors.New(""), msg, 1, args...)
 }
 
@@ -100,7 +102,7 @@ func wrapsSkip(err error, msg string, skip int, args ...interface{}) StructuredE
 		return nil
 	}
 	var pc uintptr
-	stack := NewStackSkip(skip + 1)
+	stack := stackfmt.NewStackSkip(skip + 1)
 	if hr, ok := err.(HasSlogRecord); ok {
 		record := hr.GetSlogRecord()
 		pc = record.PC
@@ -381,31 +383,27 @@ func walkUnwrapLevel(err error, visitor func(error, int) bool, stack int) bool {
 	return false
 }
 
-func hasStack(err error) bool {
-	if errWithStack, ok := err.(stackTraceAware); ok {
-		return errWithStack.HasStack()
-	}
-	if _, ok := err.(StackTracer); ok {
-		return true
-	}
-	if _, ok := err.(StackTraceFormatter); ok {
-		return true
-	}
-	return false
-}
-
 // HandleWriteErrorSlogerr handles (rare) errors when writing to fmt.State.
 // It defaults to printing the errors.
-func HandleWriteErrorSlogerr(handler func(err error)) {
-	handleWriteErrorSlogerr = handler
-}
-
-var handleWriteErrorSlogerr = func(err error) {
+var HandleWriteErrorSlogerr = func(err error) {
 	log.Println(err)
 }
 
 func writeStringSlogerr(w io.Writer, s string) {
 	if _, err := io.WriteString(w, s); err != nil {
-		handleWriteErrorSlogerr(err)
+		HandleWriteErrorSlogerr(err)
 	}
+}
+
+func hasStack(err error) bool {
+	if errWithStack, ok := err.(stackTraceAware); ok {
+		return errWithStack.HasStack()
+	}
+	if _, ok := err.(stackfmt.StackTracer); ok {
+		return true
+	}
+	if _, ok := err.(stackfmt.StackTraceFormatter); ok {
+		return true
+	}
+	return false
 }

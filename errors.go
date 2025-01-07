@@ -23,14 +23,16 @@
 //	%-v   similar to %s but newline separated. No stack traces included.
 package errors
 
+import "github.com/gregwebs/errors/stackfmt"
+
 // GetStackTracer will return the first StackTracer in the causer chain.
 // This function is used by AddStack to avoid creating redundant stack traces.
 //
 // You can also use the StackTracer interface on the returned error to get the stack trace.
-func GetStackTracer(origErr error) StackTracer {
-	var stacked StackTracer
+func GetStackTracer(origErr error) stackfmt.StackTracer {
+	var stacked stackfmt.StackTracer
 	WalkDeep(origErr, func(err error) bool {
-		if stackTracer, ok := err.(StackTracer); ok {
+		if stackTracer, ok := err.(stackfmt.StackTracer); ok {
 			stacked = stackTracer
 			return true
 		}

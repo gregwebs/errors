@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io"
 	"log"
+
+	"github.com/gregwebs/errors/stackfmt"
 )
 
 // New returns an error with the supplied message.
 // New also records the stack trace at the point it was called.
 func New(message string) error {
-	return &fundamental{stderrors.New(message), NewStack()}
+	return &fundamental{stderrors.New(message), stackfmt.NewStack()}
 }
 
 // Errorf formats according to a format specifier and returns the string
@@ -19,11 +21,11 @@ func New(message string) error {
 func Errorf(format string, args ...interface{}) error {
 	err := fmt.Errorf(format, args...)
 	if _, ok := err.(unwrapper); ok {
-		return &addStack{withStack{err, NewStack()}}
+		return &addStack{withStack{err, stackfmt.NewStack()}}
 	} else if _, ok := err.(unwraps); ok {
-		return &addStack{withStack{err, NewStack()}}
+		return &addStack{withStack{err, stackfmt.NewStack()}}
 	}
-	return &fundamental{err, NewStack()}
+	return &fundamental{err, stackfmt.NewStack()}
 }
 
 // fundamental is a base error that doesn't wrap other errors
@@ -33,11 +35,11 @@ func Errorf(format string, args ...interface{}) error {
 // The latter is done in part to support %w, but note that if %w is used we don't use fundamental
 type fundamental struct {
 	error
-	Stack
+	stackfmt.Stack
 }
 
-func (f *fundamental) StackTrace() StackTrace { return f.Stack.StackTrace() }
-func (f *fundamental) HasStack() bool         { return true }
+func (f *fundamental) StackTrace() stackfmt.StackTrace { return f.Stack.StackTrace() }
+func (f *fundamental) HasStack() bool                  { return true }
 func (f *fundamental) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
@@ -63,7 +65,7 @@ func AddStack(err error) error {
 	if HasStack(err) {
 		return err
 	}
-	return &addStack{withStack{err, NewStack()}}
+	return &addStack{withStack{err, stackfmt.NewStack()}}
 }
 
 // Same as AddStack but specify an additional number of callers to skip
@@ -74,16 +76,16 @@ func AddStackSkip(err error, skip int) error {
 	if HasStack(err) {
 		return err
 	}
-	return &addStack{withStack{err, NewStackSkip(skip + 1)}}
+	return &addStack{withStack{err, stackfmt.NewStackSkip(skip + 1)}}
 }
 
 type withStack struct {
 	error
-	Stack
+	stackfmt.Stack
 }
 
 func (w *withStack) StackTraceFormat(s fmt.State, v rune) { w.Stack.FormatStackTrace(s, v) }
-func (w *withStack) StackTrace() StackTrace               { return w.Stack.StackTrace() }
+func (w *withStack) StackTrace() stackfmt.StackTrace      { return w.Stack.StackTrace() }
 func (w *withStack) Unwrap() error                        { return w.error }
 func (w *withStack) ErrorNoUnwrap() string                { return "" }
 func (w *withStack) HasStack() bool                       { return true }
@@ -91,8 +93,8 @@ func (w *withStack) Format(s fmt.State, verb rune) {
 	formatErrorUnwrap(w, s, verb)
 }
 
-var _ StackTracer = &withStack{}
-var _ StackTraceFormatter = &withStack{}
+var _ stackfmt.StackTracer = &withStack{}
+var _ stackfmt.StackTraceFormatter = &withStack{}
 
 // addStack is returned directly whereas withStack is always used composed
 // they Unwrap differently
@@ -118,7 +120,7 @@ func Wrap(err error, message string) error {
 	}
 	return &withMessage{
 		msg:       message,
-		withStack: withStack{err, NewStack()},
+		withStack: withStack{err, stackfmt.NewStack()},
 	}
 }
 
@@ -135,7 +137,7 @@ func Wrapf(err error, format string, args ...interface{}) error {
 	}
 	return &withMessage{
 		msg:       fmt.Sprintf(format, args...),
-		withStack: withStack{err, NewStack()},
+		withStack: withStack{err, stackfmt.NewStack()},
 	}
 }
 
@@ -203,10 +205,10 @@ func HasStack(err error) bool {
 	if errWithStack, ok := err.(StackTraceAware); ok {
 		return errWithStack.HasStack()
 	}
-	if _, ok := err.(StackTracer); ok {
+	if _, ok := err.(stackfmt.StackTracer); ok {
 		return true
 	}
-	if _, ok := err.(StackTraceFormatter); ok {
+	if _, ok := err.(stackfmt.StackTraceFormatter); ok {
 		return true
 	}
 	return false
@@ -224,9 +226,9 @@ func formatErrorUnwrap(err error, s fmt.State, verb rune) {
 			} else {
 				writeStringErrstack(s, err.Error())
 			}
-			if stackTracer, ok := err.(StackTracer); ok {
+			if stackTracer, ok := err.(stackfmt.StackTracer); ok {
 				stackTracer.StackTrace().Format(s, verb)
-			} else if stackTracer, ok := err.(StackTraceFormatter); ok {
+			} else if stackTracer, ok := err.(stackfmt.StackTraceFormatter); ok {
 				stackTracer.FormatStackTrace(s, verb)
 			}
 			return

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gregwebs/errors"
+	"github.com/gregwebs/errors/stackfmt"
 )
 
 func ExampleNew() {
@@ -122,7 +123,7 @@ func ExampleErrorf() {
 
 func Example_stackTrace() {
 	type stackTracer interface {
-		StackTrace() errors.StackTrace
+		StackTrace() stackfmt.StackTrace
 	}
 
 	err, ok := errors.Cause(newWrappedErr()).(stackTracer)
@@ -135,43 +136,6 @@ func Example_stackTrace() {
 	// Output:
 	// github.com/gregwebs/errors_test.newWrappedErr
 	// github.com/gregwebs/errors_test.Example_stackTrace
-}
-
-func ExampleStructuredError() {
-	err := errors.Wraps(
-		errors.New("cause"),
-		"structured",
-		"key", "value",
-		"int", 1,
-	)
-
-	fmt.Println(err.Error())
-	// Output: structured key=value int=1: cause
-}
-
-func ExampleSlog() {
-	err := errors.Slog(
-		"cause",
-		"key", "value",
-		"int", 1,
-	)
-
-	fmt.Println(err.Error())
-	// Output: cause key=value int=1
-}
-
-func ExampleSlogRecord() {
-	err := errors.Wraps(
-		errors.New("cause"),
-		"structured",
-		"key", "value",
-		"int", 1,
-	)
-
-	rec := errors.SlogRecord(err)
-	fmt.Println(rec.Message)
-	// Output:
-	// structured: cause
 }
 
 type ErrEmpty struct{}
@@ -248,19 +212,4 @@ func ExampleWrapInPlace() {
 	// Error: wrapped: original error
 	// Regular error wrapped in place: false
 	// Regular error: regular error
-}
-
-func ExampleWraps() {
-	// Create a base error
-	baseErr := fmt.Errorf("database connection failed")
-
-	// Wrap the error with additional structured information
-	wrappedErr := errors.Wraps(baseErr, "user authentication failed",
-		"user_id", "123",
-		"attempt", 3,
-	)
-
-	// Print the error
-	fmt.Println(wrappedErr)
-	// Output: user authentication failed user_id=123 attempt=3: database connection failed
 }
