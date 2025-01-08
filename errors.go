@@ -24,7 +24,11 @@
 package errors
 
 import (
+	"io"
+	"log"
+
 	"github.com/gregwebs/errors/errwrap"
+	"github.com/gregwebs/errors/slogerr"
 	"github.com/gregwebs/errors/stackfmt"
 )
 
@@ -50,4 +54,23 @@ func GetStackTracer(origErr error) stackfmt.StackTracer {
 // It will return true if the slice or array or map is empty
 func IsNil(err error) bool {
 	return isNil(err)
+}
+
+// HandleFmtWriteError handles (rare) errors when writing to fmt.State.
+// It defaults to printing the errors.
+func HandleFmtWriteError(handler func(err error)) {
+	handleFmtWriteError = handler
+	errwrap.HandleFmtWriteError(handler)
+	stackfmt.HandleFmtWriteError(handler)
+	slogerr.HandleFmtWriteError(handler)
+}
+
+var handleFmtWriteError = func(err error) {
+	log.Println(err)
+}
+
+func writeString(w io.Writer, s string) {
+	if _, err := io.WriteString(w, s); err != nil {
+		handleFmtWriteError(err)
+	}
 }

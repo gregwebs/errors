@@ -75,12 +75,12 @@ func (se structuredErr) Format(s fmt.State, verb rune) {
 					se.stack.Format(s, verb)
 				}
 			}
-			writeStringSlogerr(s, "\n"+joinZero(" ", se.msg, structureAsText(se.Record)))
+			writeString(s, "\n"+joinZero(" ", se.msg, structureAsText(se.Record)))
 			return
 		}
 		fallthrough
 	case 's', 'q':
-		writeStringSlogerr(s, se.Error())
+		writeString(s, se.Error())
 	}
 }
 
@@ -94,10 +94,11 @@ func (se structuredErr) FormatStackTrace(s fmt.State, verb rune) {
 // The slog Record can be retrieved with SlogRecord.
 // Structured errors are more often created by wrapping existing errors with Wraps.
 func New(msg string, args ...interface{}) StructuredError {
-	return wrapsSkip(stderrors.New(""), msg, 1, args...)
+	return WrapsSkip(stderrors.New(""), msg, 1, args...)
 }
 
-func wrapsSkip(err error, msg string, skip int, args ...interface{}) StructuredError {
+// Same as Wraps but allows specifying the number of stack frames to skip.
+func WrapsSkip(err error, msg string, skip int, args ...interface{}) StructuredError {
 	if err == nil {
 		return nil
 	}
@@ -137,7 +138,7 @@ func wrapsSkip(err error, msg string, skip int, args ...interface{}) StructuredE
 // Accepts as args any valid slog args. These will generate an slog Record
 // Also accepts []slog.Attr as a single argument to avoid having to cast that argument.
 func Wraps(err error, msg string, args ...interface{}) StructuredError {
-	return wrapsSkip(err, msg, 1, args...)
+	return WrapsSkip(err, msg, 1, args...)
 }
 
 // SlogRecord traverses the error chain, calling Unwrap(), to look for slog Records
@@ -383,15 +384,19 @@ func walkUnwrapLevel(err error, visitor func(error, int) bool, stack int) bool {
 	return false
 }
 
-// HandleWriteErrorSlogerr handles (rare) errors when writing to fmt.State.
+// HandleFmtWriteError handles (rare) errors when writing to fmt.State.
 // It defaults to printing the errors.
-var HandleWriteErrorSlogerr = func(err error) {
+func HandleFmtWriteError(handler func(err error)) {
+	handleWriteError = handler
+}
+
+var handleWriteError = func(err error) {
 	log.Println(err)
 }
 
-func writeStringSlogerr(w io.Writer, s string) {
+func writeString(w io.Writer, s string) {
 	if _, err := io.WriteString(w, s); err != nil {
-		HandleWriteErrorSlogerr(err)
+		handleWriteError(err)
 	}
 }
 

@@ -3,8 +3,6 @@ package errors
 import (
 	stderrors "errors"
 	"fmt"
-	"io"
-	"log"
 
 	"github.com/gregwebs/errors/stackfmt"
 )
@@ -44,13 +42,13 @@ func (f *fundamental) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			writeStringErrstack(s, f.Error())
+			writeString(s, f.Error())
 			f.StackTrace().Format(s, verb)
 			return
 		}
 		fallthrough
 	case 's':
-		writeStringErrstack(s, f.Error())
+		writeString(s, f.Error())
 	case 'q':
 		fmt.Fprintf(s, "%q", f.Error())
 	}
@@ -221,10 +219,10 @@ func formatErrorUnwrap(err error, s fmt.State, verb rune) {
 			if uwErr := err.(errorUnwrap); uwErr != nil {
 				formatterPlusV(s, verb, uwErr.Unwrap())
 				if msg := uwErr.ErrorNoUnwrap(); msg != "" {
-					writeStringErrstack(s, "\n"+msg)
+					writeString(s, "\n"+msg)
 				}
 			} else {
-				writeStringErrstack(s, err.Error())
+				writeString(s, err.Error())
 			}
 			if stackTracer, ok := err.(stackfmt.StackTracer); ok {
 				stackTracer.StackTrace().Format(s, verb)
@@ -235,24 +233,8 @@ func formatErrorUnwrap(err error, s fmt.State, verb rune) {
 		}
 		fallthrough
 	case 's':
-		writeStringErrstack(s, err.Error())
+		writeString(s, err.Error())
 	case 'q':
 		fmt.Fprintf(s, "%q", err.Error())
-	}
-}
-
-// HandleWriteErrorErrstack handles (rare) errors when writing to fmt.State.
-// It defaults to printing the errors.
-func HandleWriteErrorErrstack(handler func(err error)) {
-	handleWriteErrorErrstack = handler
-}
-
-var handleWriteErrorErrstack = func(err error) {
-	log.Println(err)
-}
-
-func writeStringErrstack(w io.Writer, s string) {
-	if _, err := io.WriteString(w, s); err != nil {
-		handleWriteErrorErrstack(err)
 	}
 }

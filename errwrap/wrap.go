@@ -180,7 +180,7 @@ func formatErrorUnwrapStack(err ErrorUnwrap, s fmt.State, verb rune) {
 		if s.Flag('+') {
 			formatterPlusV(s, verb, err.Unwrap())
 			if msg := err.ErrorNoUnwrap(); msg != "" {
-				writeStringErrwrap(s, "\n"+msg)
+				writeString(s, "\n"+msg)
 			}
 
 			if stackTracer, ok := err.(stackTraceFormatter); ok {
@@ -190,7 +190,7 @@ func formatErrorUnwrapStack(err ErrorUnwrap, s fmt.State, verb rune) {
 		}
 		fallthrough
 	case 's':
-		writeStringErrwrap(s, err.Error())
+		writeString(s, err.Error())
 	case 'q':
 		fmt.Fprintf(s, "%q", err.Error())
 	}
@@ -215,19 +215,19 @@ type stackTraceFormatter interface {
 	FormatStackTrace(s fmt.State, verb rune)
 }
 
-// HandleWriteErrorErrwrap handles (rare) errors when writing to fmt.State.
+// HandleFmtWriteError handles (rare) errors when writing to fmt.State.
 // It defaults to printing the errors.
-func HandleWriteErrorErrWrap(handler func(err error)) {
-	handleWriteErrorErrwrap = handler
+func HandleFmtWriteError(handler func(err error)) {
+	handleFmtWriteError = handler
 }
 
-var handleWriteErrorErrwrap = func(err error) {
+var handleFmtWriteError = func(err error) {
 	log.Println(err)
 }
 
-func writeStringErrwrap(w io.Writer, s string) {
+func writeString(w io.Writer, s string) {
 	if _, err := io.WriteString(w, s); err != nil {
-		handleWriteErrorErrwrap(err)
+		handleFmtWriteError(err)
 	}
 }
 

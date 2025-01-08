@@ -70,22 +70,22 @@ func (f Frame) Format(s fmt.State, verb rune) {
 			pc := f.pc()
 			fn := runtime.FuncForPC(pc)
 			if fn == nil {
-				writeStringStackfmt(s, "unknown")
+				writeString(s, "unknown")
 			} else {
 				file, _ := fn.FileLine(pc)
 				fmt.Fprintf(s, "%s\n\t%s", fn.Name(), file)
 			}
 		default:
-			writeStringStackfmt(s, path.Base(f.file()))
+			writeString(s, path.Base(f.file()))
 		}
 	case 'd':
 		fmt.Fprintf(s, "%d", f.line())
 	case 'n':
 		name := runtime.FuncForPC(f.pc()).Name()
-		writeStringStackfmt(s, funcname(name))
+		writeString(s, funcname(name))
 	case 'v':
 		f.Format(s, 's')
-		writeStringStackfmt(s, ":")
+		writeString(s, ":")
 		f.Format(s, 'd')
 	}
 }
@@ -165,18 +165,18 @@ func funcname(name string) string {
 	return name[i+1:]
 }
 
-// HandleWriteErrorStackfmt handles (rare) errors when writing to fmt.State.
+// HandleFmtWriteError handles (rare) errors when writing to fmt.State.
 // It defaults to printing the errors.
-func HandleWriteErrorStackfmt(handler func(err error)) {
-	handleWriteErrorStackfmt = handler
+func HandleFmtWriteError(handler func(err error)) {
+	handleWriteError = handler
 }
 
-var handleWriteErrorStackfmt = func(err error) {
+var handleWriteError = func(err error) {
 	log.Println(err)
 }
 
-func writeStringStackfmt(w io.Writer, s string) {
+func writeString(w io.Writer, s string) {
 	if _, err := io.WriteString(w, s); err != nil {
-		handleWriteErrorStackfmt(err)
+		handleWriteError(err)
 	}
 }
