@@ -1,4 +1,4 @@
-package errors
+package errwrap
 
 import (
 	"fmt"
@@ -19,14 +19,6 @@ type unwrapper interface {
 
 type unwraps interface {
 	Unwrap() []error
-}
-
-type errorUnwrap interface {
-	Unwrap() error
-	// ErrorNoUnwrap is the error message component of the wrapping
-	// It will be a prefix of Error()
-	// If there is no message in the wrapping then this can return an empty string
-	ErrorNoUnwrap() string
 }
 
 func isNil(err error) bool {

@@ -188,7 +188,7 @@ func WrapFn(msg string) func(error) error {
 	return func(err error) error { return Wrap(err, msg) }
 }
 
-// WrapFn returns a wrapping function that calls Wrapf
+// WrapfFn returns a wrapping function that calls Wrapf
 func WrapfFn(msg string, args ...interface{}) func(error) error {
 	return func(err error) error { return Wrapf(err, msg, args...) }
 }

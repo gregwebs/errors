@@ -1,4 +1,4 @@
-package errors
+package errwrap
 
 import (
 	stderrors "errors"
@@ -56,7 +56,7 @@ func Join(errs ...error) error {
 func JoinsG[T error](errs ...T) []T {
 	n := 0
 	for _, err := range errs {
-		if !IsNil(err) {
+		if !isNil(err) {
 			n++
 		}
 	}
@@ -65,7 +65,7 @@ func JoinsG[T error](errs ...T) []T {
 	}
 	newErrs := make([]T, 0, n)
 	for _, err := range errs {
-		if !IsNil(err) {
+		if !isNil(err) {
 			newErrs = append(newErrs, err)
 		}
 	}
@@ -73,7 +73,7 @@ func JoinsG[T error](errs ...T) []T {
 }
 
 // The same as errors.Join but returns the array rather than wrapping it.
-// Also uses IsNil for a better nil check.
+// Also uses isNil for a better nil check.
 func Joins(errs ...error) []error {
 	return JoinsG(errs...)
 }
@@ -87,6 +87,14 @@ type errorGroup interface {
 
 // If the error is not nil and an errorGroup or satisfies Unwraps() []error, return its list of errors
 // otherwise return nil
+func Unwraps(err error) []error {
+	if group, ok := err.(unwraps); ok {
+		return group.Unwrap()
+	}
+	return nil
+}
+
+// Deprecated: use Unwraps
 func Errors(err error) []error {
 	if err == nil {
 		return nil
@@ -97,74 +105,6 @@ func Errors(err error) []error {
 		return group.Unwrap()
 	}
 	return nil
-}
-
-// Deprecated: WalkDeep was created before iterators.
-// UnwrapGroups is now preferred for those using Go version >= 1.23.
-// Note that WalkDeep uses the opposite convention for boolean return values compared to golang iterators.
-// WalkDeep does a depth-first traversal of all errors.
-// Any ErrorGroup is traversed (after first unwrapping deeply).
-// The visitor function can return true to end the traversal early
-// If iteration is ended early, WalkDeep will return true, otherwise false.
-func WalkDeep(err error, visitor func(err error) bool) bool {
-	if err == nil {
-		return false
-	}
-	if done := visitor(err); done {
-		return true
-	}
-	if done := WalkDeep(Unwrap(err), visitor); done {
-		return true
-	}
-
-	// Go wide
-	if errors := Errors(err); len(errors) > 0 {
-		for _, err := range errors {
-			if early := WalkDeep(err, visitor); early {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-// Deprecated: WalkDeepLevel was created before iterators.
-// UnwrapGroupsLevel is now preferred for those using Go version >= 1.23.
-// This operates the same as [WalkDeep] but adds a second parameter to the visitor: the level of depth in the error tree.
-func WalkDeepLevel(err error, visitor func(error, int) bool) bool {
-	return walkDeepLevel(err, visitor, 0)
-}
-
-func walkDeepLevel(err error, visitor func(error, int) bool, stack int) bool {
-	if err == nil {
-		return false
-	}
-	if done := visitor(err, stack); done {
-		return true
-	}
-	if done := walkDeepLevel(Unwrap(err), visitor, stack+1); done {
-		return true
-	}
-
-	// Go wide
-	if errors := Errors(err); len(errors) > 0 {
-		for _, err := range errors {
-			if early := walkDeepLevel(err, visitor, stack+1); early {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-// IsNil performs additional checks besides == nil
-// This helps deal with a design issue with Go interfaces: https://go.dev/doc/faq#nil_error
-// It will return true if the error interface contains a nil pointer, interface, slice, array or map
-// It will return true if the slice or array or map is empty
-func IsNil(err error) bool {
-	return isNil(err)
 }
 
 // ErrorUnwrap allows wrapped errors to give just the message of the individual error without any unwrapping.
@@ -199,7 +139,7 @@ type ErrorWrapper interface {
 // Returns true if wrapped in place.
 // Returns false if not wrapped in place, including if the given error is nil.
 func WrapInPlace(err error, wrap func(error) error) bool {
-	if IsNil(err) {
+	if isNil(err) {
 		return false
 	}
 	if inPlace, ok := AsType[ErrorWrapper](err); ok {
@@ -289,4 +229,64 @@ func writeStringErrwrap(w io.Writer, s string) {
 	if _, err := io.WriteString(w, s); err != nil {
 		handleWriteErrorErrwrap(err)
 	}
+}
+
+// Deprecated: WalkDeep was created before iterators.
+// UnwrapGroups is now preferred for those using Go version >= 1.23.
+// Note that WalkDeep uses the opposite convention for boolean return values compared to golang iterators.
+// WalkDeep does a depth-first traversal of all errors.
+// Any ErrorGroup is traversed (after first unwrapping deeply).
+// The visitor function can return true to end the traversal early
+// If iteration is ended early, WalkDeep will return true, otherwise false.
+func WalkDeep(err error, visitor func(err error) bool) bool {
+	if err == nil {
+		return false
+	}
+	if done := visitor(err); done {
+		return true
+	}
+	if done := WalkDeep(Unwrap(err), visitor); done {
+		return true
+	}
+
+	// Go wide
+	if errors := Errors(err); len(errors) > 0 {
+		for _, err := range errors {
+			if early := WalkDeep(err, visitor); early {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// Deprecated: WalkDeepLevel was created before iterators.
+// UnwrapGroupsLevel is now preferred for those using Go version >= 1.23.
+// This operates the same as [WalkDeep] but adds a second parameter to the visitor: the level of depth in the error tree.
+func WalkDeepLevel(err error, visitor func(error, int) bool) bool {
+	return walkDeepLevel(err, visitor, 0)
+}
+
+func walkDeepLevel(err error, visitor func(error, int) bool, stack int) bool {
+	if err == nil {
+		return false
+	}
+	if done := visitor(err, stack); done {
+		return true
+	}
+	if done := walkDeepLevel(Unwrap(err), visitor, stack+1); done {
+		return true
+	}
+
+	// Go wide
+	if errors := Errors(err); len(errors) > 0 {
+		for _, err := range errors {
+			if early := walkDeepLevel(err, visitor, stack+1); early {
+				return true
+			}
+		}
+	}
+
+	return false
 }

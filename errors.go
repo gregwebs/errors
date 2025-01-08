@@ -23,7 +23,10 @@
 //	%-v   similar to %s but newline separated. No stack traces included.
 package errors
 
-import "github.com/gregwebs/errors/stackfmt"
+import (
+	"github.com/gregwebs/errors/errwrap"
+	"github.com/gregwebs/errors/stackfmt"
+)
 
 // GetStackTracer will return the first StackTracer in the causer chain.
 // This function is used by AddStack to avoid creating redundant stack traces.
@@ -31,7 +34,7 @@ import "github.com/gregwebs/errors/stackfmt"
 // You can also use the StackTracer interface on the returned error to get the stack trace.
 func GetStackTracer(origErr error) stackfmt.StackTracer {
 	var stacked stackfmt.StackTracer
-	WalkDeep(origErr, func(err error) bool {
+	errwrap.WalkDeep(origErr, func(err error) bool {
 		if stackTracer, ok := err.(stackfmt.StackTracer); ok {
 			stacked = stackTracer
 			return true
@@ -39,4 +42,12 @@ func GetStackTracer(origErr error) stackfmt.StackTracer {
 		return false
 	})
 	return stacked
+}
+
+// IsNil performs additional checks besides == nil
+// This helps deal with a design issue with Go interfaces: https://go.dev/doc/faq#nil_error
+// It will return true if the error interface contains a nil pointer, interface, slice, array or map
+// It will return true if the slice or array or map is empty
+func IsNil(err error) bool {
+	return isNil(err)
 }

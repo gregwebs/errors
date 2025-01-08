@@ -1,11 +1,12 @@
 //go:build go1.23
 
-package errors
+package errwrap
 
 import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"testing"
 )
 
@@ -63,7 +64,7 @@ func find(origErr error, test func(error) bool) error {
 
 func TestFind(t *testing.T) {
 	eNew := errors.New("error")
-	wrapped := Wrap(nilError{}, "nil")
+	wrapped := fmt.Errorf("nil: %w", nilError{})
 	tests := []struct {
 		err    error
 		finder func(error) bool
@@ -95,10 +96,10 @@ func TestFind(t *testing.T) {
 }
 
 func ExampleUnwrapGroups() {
-	err1 := New("error 1")
-	err2 := New("error 2")
+	err1 := errors.New("error 1")
+	err2 := errors.New("error 2")
 	group := Join(err1, err2)
-	wrapped := Wrap(group, "wrapped")
+	wrapped := fmt.Errorf("wrapped: %w", group)
 
 	for e := range UnwrapGroups(wrapped) {
 		fmt.Println(e.Error() + "\n")
@@ -114,3 +115,63 @@ func ExampleUnwrapGroups() {
 	//
 	// error 2
 }
+
+type errWalkTest struct {
+	cause error
+	sub   []error
+	v     int
+}
+
+func (e *errWalkTest) Error() string {
+	return strconv.Itoa(e.v)
+}
+
+func (e *errWalkTest) Unwrap() error {
+	return e.cause
+}
+
+func (e *errWalkTest) Errors() []error {
+	return e.sub
+}
+
+func testFind(err error, v int) bool {
+	return WalkDeep(err, func(err error) bool {
+		e := err.(*errWalkTest)
+		return e.v == v
+	})
+}
+
+func TestWalkDeep(t *testing.T) {
+	err := &errWalkTest{
+		sub: []error{
+			&errWalkTest{
+				v:     10,
+				cause: &errWalkTest{v: 11},
+			},
+			&errWalkTest{
+				v:     20,
+				cause: &errWalkTest{v: 21, cause: &errWalkTest{v: 22}},
+			},
+			&errWalkTest{
+				v:     30,
+				cause: &errWalkTest{v: 31},
+			},
+		},
+	}
+
+	if !testFind(err, 11) {
+		t.Errorf("not found in first cause chain")
+	}
+
+	if !testFind(err, 22) {
+		t.Errorf("not found in siblings")
+	}
+
+	if testFind(err, 32) {
+		t.Errorf("found not exists")
+	}
+}
+
+type nilError struct{}
+
+func (nilError) Error() string { return "nil error" }
