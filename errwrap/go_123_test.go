@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
 	"testing"
 )
 
@@ -114,31 +113,6 @@ func ExampleUnwrapGroups() {
 	// error 1
 	//
 	// error 2
-}
-
-type errWalkTest struct {
-	cause error
-	sub   []error
-	v     int
-}
-
-func (e *errWalkTest) Error() string {
-	return strconv.Itoa(e.v)
-}
-
-func (e *errWalkTest) Unwrap() error {
-	return e.cause
-}
-
-func (e *errWalkTest) Errors() []error {
-	return e.sub
-}
-
-func testFind(err error, v int) bool {
-	return WalkDeep(err, func(err error) bool {
-		e := err.(*errWalkTest)
-		return e.v == v
-	})
 }
 
 func TestWalkDeep(t *testing.T) {

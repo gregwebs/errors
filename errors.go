@@ -37,15 +37,12 @@ import (
 //
 // You can also use the StackTracer interface on the returned error to get the stack trace.
 func GetStackTracer(origErr error) stackfmt.StackTracer {
-	var stacked stackfmt.StackTracer
-	errwrap.WalkDeep(origErr, func(err error) bool {
+	for err := range errwrap.UnwrapGroups(origErr) {
 		if stackTracer, ok := err.(stackfmt.StackTracer); ok {
-			stacked = stackTracer
-			return true
+			return stackTracer
 		}
-		return false
-	})
-	return stacked
+	}
+	return nil
 }
 
 // IsNil performs additional checks besides == nil

@@ -3,6 +3,7 @@ package errwrap
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"testing"
 )
 
@@ -46,6 +47,24 @@ func WrapfFn(msg string, args ...interface{}) func(error) error {
 	}
 }
 
+type errWalkTest struct {
+	cause error
+	sub   []error
+	v     int
+}
+
+func (e *errWalkTest) Error() string {
+	return strconv.Itoa(e.v)
+}
+
+func (e *errWalkTest) Unwrap() error {
+	return e.cause
+}
+
+func (e *errWalkTest) Errors() []error {
+	return e.sub
+}
+
 func TestWalkDeepComplexTree(t *testing.T) {
 	err := &errWalkTest{v: 1, cause: &errWalkTest{
 		sub: []error{
@@ -87,4 +106,10 @@ func TestWalkDeepComplexTree(t *testing.T) {
 	assertNotFind(32, "deep search Neg")
 	assertFind(30, "Tree node A")
 	assertFind(20, "Tree node with many children")
+}
+func testFind(err error, v int) bool {
+	return WalkDeep(err, func(err error) bool {
+		e := err.(*errWalkTest)
+		return e.v == v
+	})
 }
