@@ -1,2 +1,6 @@
+github.com/gregwebs/errors/errwrap v0.0.0-20250109233418-ed1e850dab1e h1:Wafq/gbtaSPmzdNTDnw/gAHnI1h7nTAkG6XtgQm4qfQ=
+github.com/gregwebs/errors/errwrap v0.0.0-20250109233418-ed1e850dab1e/go.mod h1:Xqoa1jjxE/0w8gjUTyRQEOXrG8d+sAwQmZEwnUyTtig=
+github.com/gregwebs/errors/slogerr v0.0.0-20250109233418-ed1e850dab1e h1:IyuYN/MGfJmwZrD8zwEAXtxDoxOXGHAvXA4SRlsmQZI=
+github.com/gregwebs/errors/slogerr v0.0.0-20250109233418-ed1e850dab1e/go.mod h1:emBiGGVdfUO1UnPUCvgkN49Y2eL+EClImkMR+4Iq0rY=
 github.com/gregwebs/stackfmt v0.0.0-20250109232346-61b11c0ff204 h1:h4p6a7+y8j1hAQZooo/NUfOPUj1LKCr9oPPkIUtIYbI=
 github.com/gregwebs/stackfmt v0.0.0-20250109232346-61b11c0ff204/go.mod h1:MQWvus3s9juULflTEiFIllieKiz7AnX7i4HWyPOs2nQ=
