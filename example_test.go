@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gregwebs/errors"
+	"github.com/gregwebs/errors/stackfmt"
 )
 
 func ExampleNew() {
@@ -122,7 +123,7 @@ func ExampleErrorf() {
 
 func Example_stackTrace() {
 	type stackTracer interface {
-		StackTrace() errors.StackTrace
+		StackTrace() stackfmt.StackTrace
 	}
 
 	err, ok := errors.Cause(newWrappedErr()).(stackTracer)
@@ -135,43 +136,6 @@ func Example_stackTrace() {
 	// Output:
 	// github.com/gregwebs/errors_test.newWrappedErr
 	// github.com/gregwebs/errors_test.Example_stackTrace
-}
-
-func ExampleStructuredError() {
-	err := errors.Wraps(
-		errors.New("cause"),
-		"structured",
-		"key", "value",
-		"int", 1,
-	)
-
-	fmt.Println(err.Error())
-	// Output: structured key=value int=1: cause
-}
-
-func ExampleSlog() {
-	err := errors.Slog(
-		"cause",
-		"key", "value",
-		"int", 1,
-	)
-
-	fmt.Println(err.Error())
-	// Output: cause key=value int=1
-}
-
-func ExampleSlogRecord() {
-	err := errors.Wraps(
-		errors.New("cause"),
-		"structured",
-		"key", "value",
-		"int", 1,
-	)
-
-	rec := errors.SlogRecord(err)
-	fmt.Println(rec.Message)
-	// Output:
-	// structured: cause
 }
 
 type ErrEmpty struct{}
@@ -187,30 +151,6 @@ func ExampleAsType() {
 	// Output: empty
 }
 
-type errorGroup struct {
-	errs []error
-}
-
-func (eg *errorGroup) Error() string {
-	return errors.Join(eg.errs...).Error()
-}
-
-func (eg *errorGroup) Errors() []error { return eg.errs }
-
-func ExampleErrors() {
-	var eg errorGroup
-	eg.errs = append(eg.errs, errors.New("error1"))
-	eg.errs = append(eg.errs, errors.New("error2"))
-
-	fmt.Println(errors.Errors(nil))
-	fmt.Println(errors.Errors(errors.New("test")))
-	fmt.Println(errors.Errors(&eg))
-	// Output:
-	// []
-	// []
-	// [error1 error2]
-}
-
 func ExampleIsNil() {
 	var empty *ErrEmpty = nil //nolint:staticcheck
 	var err error = empty
@@ -219,48 +159,4 @@ func ExampleIsNil() {
 	// Output:
 	// false
 	// true
-}
-
-type inplace struct {
-	*errors.ErrorWrap
-}
-
-func ExampleWrapInPlace() {
-	err := inplace{errors.NewErrorWrap(errors.New("original error"))}
-
-	// Wrap the error in place
-	wrapped := errors.WrapInPlace(err, errors.WrapFn("wrapped"))
-
-	// Print the error and whether it was wrapped in place
-	fmt.Printf("Wrapped in place: %v\n", wrapped)
-	fmt.Printf("Error: %v\n", err)
-
-	// Try with a regular error that doesn't implement ErrorWrapper
-	regularErr := errors.New("regular error")
-	wrapped = errors.WrapInPlace(regularErr, errors.WrapFn("wrapped"))
-
-	// Print the result for regular error
-	fmt.Printf("Regular error wrapped in place: %v\n", wrapped)
-	fmt.Printf("Regular error: %v\n", regularErr)
-
-	// Output:
-	// Wrapped in place: true
-	// Error: wrapped: original error
-	// Regular error wrapped in place: false
-	// Regular error: regular error
-}
-
-func ExampleWraps() {
-	// Create a base error
-	baseErr := fmt.Errorf("database connection failed")
-
-	// Wrap the error with additional structured information
-	wrappedErr := errors.Wraps(baseErr, "user authentication failed",
-		"user_id", "123",
-		"attempt", 3,
-	)
-
-	// Print the error
-	fmt.Println(wrappedErr)
-	// Output: user authentication failed user_id=123 attempt=3: database connection failed
 }

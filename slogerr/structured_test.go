@@ -1,4 +1,4 @@
-package errors
+package slogerr
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestStructuredBad(t *testing.T) {
-	errBad := Slog(
+	errBad := New(
 		"cause1",
 		"structured1",
 		"key", "value",
@@ -30,7 +30,7 @@ func TestStructuredBad(t *testing.T) {
 }
 
 func TestStructured(t *testing.T) {
-	errInner := Slog(
+	errInner := New(
 		"cause1",
 		"key", "value",
 		"int", 1,
@@ -83,7 +83,7 @@ func (c container) Unwrap() error {
 
 func TestStructuredWrap(t *testing.T) {
 	errInner := Wraps(
-		New("cause1"),
+		errors.New("cause1"),
 		"structured1",
 		"key", "value",
 		"int", 1,
@@ -117,8 +117,9 @@ func TestStructuredWrap(t *testing.T) {
 	if err := handler.Handle(context.Background(), *record); err != nil {
 		t.Fatalf("error writing out record %+v", err)
 	}
-	if !strings.Contains(getBuf(), "structured_test.go") {
-		t.Errorf("expected stack trace with file")
+	buf := getBuf()
+	if !strings.Contains(buf, "structured_test.go") {
+		t.Errorf("expected stack trace with file, got %s", string(buf))
 	}
 }
 
@@ -203,7 +204,7 @@ func TestStructuredAttrsInner(t *testing.T) {
 }
 
 func TestStructuredAttrsOuter(t *testing.T) {
-	errInner := Slog(
+	errInner := New(
 		"structured2",
 		"key", "value",
 		"int", 3,
@@ -235,7 +236,7 @@ func TestStructuredAttrsOuter(t *testing.T) {
 }
 
 func TestStructuredWrapping(t *testing.T) {
-	errInner := Slog("structured2", "k", "v")
+	errInner := New("structured2", "k", "v")
 	wrapped := Wraps(errInner, "", "outer", 1)
 	expectedErrorMsg := "outer=1: structured2 k=v"
 	if wrapped.Error() != expectedErrorMsg {

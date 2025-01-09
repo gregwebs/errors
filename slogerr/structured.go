@@ -1,14 +1,18 @@
-package errors
+package slogerr
 
 import (
 	"bytes"
 	"context"
 	stderrors "errors"
 	"fmt"
+	"io"
+	"log"
 	"log/slog"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/gregwebs/errors/stackfmt"
 )
 
 // HasSlogRecord is used to retrieve an slog.Record.
@@ -35,6 +39,7 @@ type structuredErr struct {
 	Record slog.Record
 	err    error
 	msg    string
+	stack  stackfmt.Stack
 }
 
 func (se structuredErr) GetSlogRecord() slog.Record {
@@ -61,7 +66,15 @@ func (se structuredErr) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			formatterPlusV(s, verb, se.Unwrap())
+			formatterPlusV(s, verb, se.err)
+			if !hasStack(se.err) {
+				var st stackfmt.StackTracer
+				if stderrors.As(se.err, &st) {
+					st.StackTrace().Format(s, verb)
+				} else {
+					se.stack.Format(s, verb)
+				}
+			}
 			writeString(s, "\n"+joinZero(" ", se.msg, structureAsText(se.Record)))
 			return
 		}
@@ -71,27 +84,31 @@ func (se structuredErr) Format(s fmt.State, verb rune) {
 	}
 }
 
-// Slog creates an error that instead of generating a format string generates a structured slog Record.
+func (se structuredErr) FormatStackTrace(s fmt.State, verb rune) {
+	se.stack.FormatStackTrace(s, verb)
+}
+
+// New creates an error that instead of generating a format string generates a structured slog Record.
 // Accepts as args any valid slog args.
 // Also accepts `[]slog.Attr` as a single argument to avoid having to cast that argument.
 // The slog Record can be retrieved with SlogRecord.
 // Structured errors are more often created by wrapping existing errors with Wraps.
-func Slog(msg string, args ...interface{}) StructuredError {
-	return wrapsSkip(AddStackSkip(stderrors.New(""), 1), msg, 1, args...)
+func New(msg string, args ...interface{}) StructuredError {
+	return WrapsSkip(stderrors.New(""), msg, 1, args...)
 }
 
-func wrapsSkip(err error, msg string, skip int, args ...interface{}) StructuredError {
+// Same as Wraps but allows specifying the number of stack frames to skip.
+func WrapsSkip(err error, msg string, skip int, args ...interface{}) StructuredError {
 	if err == nil {
 		return nil
 	}
 	var pc uintptr
+	stack := stackfmt.NewStackSkip(skip + 1)
 	if hr, ok := err.(HasSlogRecord); ok {
 		record := hr.GetSlogRecord()
 		pc = record.PC
 	} else {
-		var pcs [1]uintptr
-		runtime.Callers(2+skip, pcs[:])
-		pc = pcs[0]
+		pc = stack[0]
 	}
 	record := slog.NewRecord(time.Now(), slog.LevelError, msg, pc)
 	// support passing an array of Attr
@@ -109,14 +126,11 @@ func wrapsSkip(err error, msg string, skip int, args ...interface{}) StructuredE
 		record.Add(args...)
 	}
 
-	// TODO: use the exact same stack for the error and the record
-	if !HasStack(err) {
-		err = AddStackSkip(err, 1+skip)
-	}
 	return structuredErr{
 		Record: record,
 		err:    err,
 		msg:    msg,
+		stack:  stack,
 	}
 }
 
@@ -124,7 +138,7 @@ func wrapsSkip(err error, msg string, skip int, args ...interface{}) StructuredE
 // Accepts as args any valid slog args. These will generate an slog Record
 // Also accepts []slog.Attr as a single argument to avoid having to cast that argument.
 func Wraps(err error, msg string, args ...interface{}) StructuredError {
-	return wrapsSkip(err, msg, 1, args...)
+	return WrapsSkip(err, msg, 1, args...)
 }
 
 // SlogRecord traverses the error chain, calling Unwrap(), to look for slog Records
@@ -143,7 +157,7 @@ func SlogRecord(inputErr error) *slog.Record {
 	var record *slog.Record
 	msgDone := false
 	var msgUnrecognized string
-	walkDeepStack(inputErr, func(err error, stack int) bool {
+	walkUnwrapLevel(inputErr, func(err error, stack int) bool {
 		if hr, ok := err.(HasSlogRecord); ok {
 			newRecord := hr.GetSlogRecord()
 			if record == nil {
@@ -183,7 +197,7 @@ func SlogRecord(inputErr error) *slog.Record {
 						msgUnrecognized = ""
 					}
 				}
-			} else if noUnwrap, ok := err.(ErrorUnwrap); ok {
+			} else if noUnwrap, ok := err.(errorUnwrap); ok {
 				if msg := noUnwrap.ErrorNoUnwrap(); msg != "" {
 					if msgUnrecognized == "" || strings.HasPrefix(msgUnrecognized, msg) {
 						msgs = append(msgs, msg)
@@ -338,4 +352,63 @@ func textFromRecord(err valuerError) string {
 		return ""
 	}
 	return joinZero(" ", record.Message, structureAsText(*record))
+}
+
+// WrapFn returns a wrapping function that calls Wraps
+func WrapsFn(msg string, args ...interface{}) func(error) error {
+	return func(err error) error { return Wraps(err, msg, args...) }
+}
+
+func walkUnwrapLevel(err error, visitor func(error, int) bool, stack int) bool {
+	if err == nil {
+		return false
+	}
+	if done := visitor(err, stack); done {
+		return true
+	}
+	if unwrapped, ok := err.(unwrapper); ok {
+		if done := walkUnwrapLevel(unwrapped.Unwrap(), visitor, stack+1); done {
+			return true
+		}
+	}
+
+	// Go wide
+	if group, ok := err.(unwraps); ok {
+		for _, err := range group.Unwrap() {
+			if early := walkUnwrapLevel(err, visitor, stack+1); early {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// HandleFmtWriteError handles (rare) errors when writing to fmt.State.
+// It defaults to printing the errors.
+func HandleFmtWriteError(handler func(err error)) {
+	handleWriteError = handler
+}
+
+var handleWriteError = func(err error) {
+	log.Println(err)
+}
+
+func writeString(w io.Writer, s string) {
+	if _, err := io.WriteString(w, s); err != nil {
+		handleWriteError(err)
+	}
+}
+
+func hasStack(err error) bool {
+	if errWithStack, ok := err.(stackTraceAware); ok {
+		return errWithStack.HasStack()
+	}
+	if _, ok := err.(stackfmt.StackTracer); ok {
+		return true
+	}
+	if _, ok := err.(stackfmt.StackTraceFormatter); ok {
+		return true
+	}
+	return false
 }
