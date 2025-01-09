@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/gregwebs/errors"
-	"github.com/gregwebs/errors/stackfmt"
+	"github.com/gregwebs/stackfmt"
 )
 
 func ExampleNew() {

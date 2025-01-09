@@ -29,7 +29,7 @@ import (
 
 	"github.com/gregwebs/errors/errwrap"
 	"github.com/gregwebs/errors/slogerr"
-	"github.com/gregwebs/errors/stackfmt"
+	"github.com/gregwebs/stackfmt"
 )
 
 // GetStackTracer will return the first StackTracer in the causer chain.

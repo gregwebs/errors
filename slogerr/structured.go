@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gregwebs/errors/stackfmt"
+	"github.com/gregwebs/stackfmt"
 )
 
 // HasSlogRecord is used to retrieve an slog.Record.

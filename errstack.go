@@ -4,7 +4,7 @@ import (
 	stderrors "errors"
 	"fmt"
 
-	"github.com/gregwebs/errors/stackfmt"
+	"github.com/gregwebs/stackfmt"
 )
 
 // New returns an error with the supplied message.
