@@ -191,16 +191,18 @@ func WrapfFn(msg string, args ...interface{}) func(error) error {
 	return func(err error) error { return Wrapf(err, msg, args...) }
 }
 
-// StackTraceAware can be used to avoid repetitive traversals of an error chain.
+// stackTraceAware can be used to avoid repetitive traversals of an error chain.
 // HasStack checks for this marker first.
-type StackTraceAware interface {
+type stackTraceAware interface {
 	HasStack() bool
 }
 
 // HasStack returns true if the error will find a stack trace
 // It does not unwrap errors
+// It looks for stackfmt.StackTracer, stackfmt.StackTraceFormatter,
+// or the method HasStack() bool
 func HasStack(err error) bool {
-	if errWithStack, ok := err.(StackTraceAware); ok {
+	if errWithStack, ok := err.(stackTraceAware); ok {
 		return errWithStack.HasStack()
 	}
 	if _, ok := err.(stackfmt.StackTracer); ok {
