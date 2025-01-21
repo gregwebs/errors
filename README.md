@@ -25,7 +25,9 @@ If you don't want to bother with adding any additional metadata, you can just us
 You can also add context with slog attributes with `Wraps`
 
 ```go
-return errors.Wraps(err, "failure", "id", 5, "key", "value)
+return errors.Wraps(err, "failure message", slog.Int("id", 5), slog.String("key", "value))
+// or untyped just as in slog
+return errors.Wraps(err, "failure message", "id", 5, "key", "value)
 ```
 
 ## Using with standard library errors
