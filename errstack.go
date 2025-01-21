@@ -10,7 +10,7 @@ import (
 // New returns an error with the supplied message.
 // New also records the stack trace at the point it was called.
 func New(message string) error {
-	return &fundamental{stderrors.New(message), stackfmt.NewStack()}
+	return &fundamental{stderrors.New(message), stackfmt.NewStackSkip(1)}
 }
 
 // Errorf formats according to a format specifier and returns the string
@@ -19,11 +19,11 @@ func New(message string) error {
 func Errorf(format string, args ...interface{}) error {
 	err := fmt.Errorf(format, args...)
 	if _, ok := err.(unwrapper); ok {
-		return &addStack{withStack{err, stackfmt.NewStack()}}
+		return &addStack{withStack{err, stackfmt.NewStackSkip(1)}}
 	} else if _, ok := err.(unwraps); ok {
-		return &addStack{withStack{err, stackfmt.NewStack()}}
+		return &addStack{withStack{err, stackfmt.NewStackSkip(1)}}
 	}
-	return &fundamental{err, stackfmt.NewStack()}
+	return &fundamental{err, stackfmt.NewStackSkip(1)}
 }
 
 // fundamental is a base error that doesn't wrap other errors
@@ -63,7 +63,7 @@ func AddStack(err error) error {
 	if HasStack(err) {
 		return err
 	}
-	return &addStack{withStack{err, stackfmt.NewStack()}}
+	return &addStack{withStack{err, stackfmt.NewStackSkip(1)}}
 }
 
 // Same as AddStack but specify an additional number of callers to skip
@@ -118,7 +118,7 @@ func Wrap(err error, message string) error {
 	}
 	return &withMessage{
 		msg:       message,
-		withStack: withStack{err, stackfmt.NewStack()},
+		withStack: withStack{err, stackfmt.NewStackSkip(1)},
 	}
 }
 
@@ -135,7 +135,7 @@ func Wrapf(err error, format string, args ...interface{}) error {
 	}
 	return &withMessage{
 		msg:       fmt.Sprintf(format, args...),
-		withStack: withStack{err, stackfmt.NewStack()},
+		withStack: withStack{err, stackfmt.NewStackSkip(1)},
 	}
 }
 
