@@ -235,7 +235,7 @@ func writeString(w io.Writer, s string) {
 // UnwrapGroups is now preferred for those using Go version >= 1.23.
 // Note that WalkDeep uses the opposite convention for boolean return values compared to golang iterators.
 // WalkDeep does a depth-first traversal of all errors.
-// Any ErrorGroup is traversed (after first unwrapping deeply).
+// An error that defines Unwrap() []error is expanded and traversed
 // The visitor function can return true to end the traversal early
 // If iteration is ended early, WalkDeep will return true, otherwise false.
 func WalkDeep(err error, visitor func(err error) bool) bool {
